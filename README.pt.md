@@ -2,9 +2,11 @@
 
 Plugin público para Paper, desenvolvido pela [Central Macatuba](https://github.com/centralmacatuba), que implementa o protocolo de mensagens `minecraft-web-client:voice-chat` e integra jogadores do Minecraft a uma sala LiveKit.
 
+[Read in English](README.md).
+
 O plugin foi projetado para ser reutilizado por servidores Minecraft independentes. Infraestrutura, credenciais, nomes de salas e políticas de moderação específicas de cada servidor devem ficar na configuração da instalação, não neste repositório.
 
-> **Estado do projeto:** planejamento e implementação inicial. O enquadramento dos pacotes foi conferido com o código atual do cliente `minecraft-web-client`. A compatibilidade ponta a ponta com um cliente real e uma implantação LiveKit ainda precisa ser validada.
+> **Estado do projeto:** planejamento e implementação inicial. O enquadramento dos pacotes foi conferido com o código atual do cliente `minecraft-web-client`. A compatibilidade ponta a ponta com um cliente real e uma implantação LiveKit ainda não foi validada.
 
 ## Objetivos
 
@@ -70,7 +72,7 @@ A segunda string contém um objeto JSON. Portanto, **não** é uma mensagem de p
 | `config` | `VoiceConfig` | Dados de conexão LiveKit individuais do jogador. |
 | `nearby` | `NearbyPayload` | Jogadores que o cliente deve conseguir ouvir e identidades forçadas ao estado de mudo. |
 
-Formato esperado de `VoiceConfig`, compatível com a interface do cliente:
+Formato esperado de `VoiceConfig`:
 
 ```json
 {
@@ -130,28 +132,13 @@ Resposta JSON:
 
 O backend deve emitir um token cuja identidade do participante (`sub`) corresponda ao UUID Minecraft recebido, limitar o token à sala solicitada, definir permissões apropriadas de publicação/inscrição e usar expiração curta. O backend deve autenticar a credencial do servidor e validar a requisição; não deve confiar cegamente em identidades arbitrárias enviadas por clientes públicos.
 
-O plugin também confere as claims do token JWT recebidas: identidade, sala e validade temporal. Essa inspeção valida a resposta do backend, mas não substitui a validação criptográfica da assinatura, que continua sendo responsabilidade do LiveKit e do backend confiável.
-
 ## Configuração
 
 A implementação utiliza `config.yml` para configurações específicas do servidor. Segredos devem ser fornecidos por variáveis de ambiente ou outro mecanismo seguro, nunca enviados ao Git.
 
 Variável de ambiente padrão para a credencial do backend: `MCRAFT_VOICE_BACKEND_TOKEN`.
 
-Consulte o arquivo `src/main/resources/config.yml` para ver todas as opções disponíveis.
-
-## Comandos e permissões
-
-- `/mcraftvoice status`: exibe o número de jogadores conectados à sessão de voz.
-- `/mcraftvoice mute <jogador>`: adiciona o jogador à lista de identidades forçadas ao estado de mudo enviada aos clientes próximos.
-- `/mcraftvoice unmute <jogador>`: remove o jogador dessa lista.
-
-Permissões:
-
-- `mcraftvoice.use`: permite ao jogador ativar o voice chat (padrão: todos).
-- `mcraftvoice.moderate`: permite executar ações de moderação (padrão: operadores).
-
-**Limite importante:** o comando `mute` controla a reprodução do participante nos clientes compatíveis por meio do campo `forceMuted`. Ele não revoga, por si só, a permissão de publicação de áudio no LiveKit. Uma restrição de publicação efetivamente aplicada no servidor exigirá integração administrativa adicional com o backend/LiveKit.
+Consulte o arquivo `src/main/resources/config.yml` para ver as opções previstas.
 
 ## Compatibilidade e requisitos
 
@@ -163,6 +150,36 @@ Permissões:
 
 Velocity e coordenação de múltiplos servidores backend não fazem parte do escopo inicial.
 
+## Planejamento de desenvolvimento
+
+### Fase 1 — Protocolo e base Paper
+- [ ] Criar o projeto Gradle e a classe principal do plugin.
+- [ ] Implementar o enquadramento exato `pstring/i16` e validar os payloads JSON.
+- [ ] Registrar os canais de mensagens de entrada e saída.
+- [ ] Anunciar `available` aos clientes compatíveis.
+- [ ] Tratar com segurança as ações `enable` e `disable`.
+- [ ] Adicionar testes unitários para codificação e decodificação dos pacotes.
+
+### Fase 2 — Criação de sessões LiveKit
+- [ ] Implementar o cliente HTTP autenticado para o backend de tokens.
+- [ ] Validar as respostas do backend e vincular a identidade do token ao UUID Minecraft.
+- [ ] Enviar o payload `config` esperado pelo cliente.
+- [ ] Tratar timeouts, erros, solicitações duplicadas e desconexões durante requisições.
+
+### Fase 3 — Proximidade e moderação
+- [ ] Calcular jogadores próximos que participam do voice chat no mesmo mundo.
+- [ ] Enviar `nearby` somente quando o payload mudar.
+- [ ] Permitir configurar o alcance de audição e o intervalo de atualização.
+- [ ] Adicionar estado de mudo controlado pelo servidor e integração com permissões.
+- [ ] Limpar o estado em mudanças de mundo, desconexões e encerramento do plugin.
+
+### Fase 4 — Verificação e publicação
+- [ ] Testar com o Minecraft Web Client sem modificações.
+- [ ] Verificar áudio entre dois ou mais jogadores pelo LiveKit.
+- [ ] Testar reconexões, expiração de tokens, mudo, mudanças de mundo e encaminhamento pelo proxy.
+- [ ] Finalizar documentação operacional e automação de releases.
+- [ ] Revisar segurança das dependências e reprodutibilidade do build.
+
 ## Desenvolvimento
 
 O projeto utiliza Gradle e a toolchain Java definida no build.
@@ -172,7 +189,7 @@ gradle test
 gradle build
 ```
 
-O JAR gerado fica em `build/libs/`.
+O JAR do plugin é gerado em `build/libs/`.
 
 ## Licença
 
