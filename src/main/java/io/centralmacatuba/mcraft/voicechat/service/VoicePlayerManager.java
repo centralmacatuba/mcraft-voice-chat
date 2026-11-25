@@ -29,12 +29,14 @@ import java.util.logging.Level;
 
 public final class VoicePlayerManager implements PluginMessageListener, Listener {
     private static final long FAILURE_COOLDOWN_MILLIS = 5_000L;
+    private static final long REQUEST_COOLDOWN_MILLIS = 1_500L;
 
     private final McraftVoiceChatPlugin plugin;
     private final VoiceTokenProvider tokenProvider;
     private final Map<UUID, Player> activePlayers = new HashMap<>();
     private final Map<UUID, Long> pendingRequests = new HashMap<>();
     private final Map<UUID, Long> failedRequestCooldowns = new HashMap<>();
+    private final Map<UUID, Long> requestCooldowns = new HashMap<>();
     private final Map<UUID, String> lastNearbyPayloads = new HashMap<>();
     private final Set<UUID> forceMuted = new HashSet<>();
     private final AtomicLong requestSequence = new AtomicLong();
@@ -89,6 +91,7 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
         UUID playerId = event.getPlayer().getUniqueId();
         disable(playerId);
         failedRequestCooldowns.remove(playerId);
+        requestCooldowns.remove(playerId);
         forceMuted.remove(playerId);
         lastNearbyPayloads.remove(playerId);
     }
@@ -110,11 +113,17 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
             return;
         }
 
+        long now = System.currentTimeMillis();
         Long cooldownUntil = failedRequestCooldowns.get(playerId);
-        if (cooldownUntil != null && cooldownUntil > System.currentTimeMillis()) {
+        if (cooldownUntil != null && cooldownUntil > now) {
+            return;
+        }
+        Long lastRequestAt = requestCooldowns.get(playerId);
+        if (lastRequestAt != null && now - lastRequestAt < REQUEST_COOLDOWN_MILLIS) {
             return;
         }
 
+        requestCooldowns.put(playerId, now);
         long requestId = requestSequence.incrementAndGet();
         String playerName = player.getName();
         pendingRequests.put(playerId, requestId);
@@ -211,6 +220,7 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
         activePlayers.clear();
         pendingRequests.clear();
         failedRequestCooldowns.clear();
+        requestCooldowns.clear();
         lastNearbyPayloads.clear();
         forceMuted.clear();
     }
