@@ -15,6 +15,7 @@ dependencies {
     // Paper provides Gson at runtime; compileOnly avoids bundling a conflicting copy in the plugin JAR.
     compileOnly("com.google.code.gson:gson:2.13.2")
 
+    testImplementation("com.google.code.gson:gson:2.13.2")
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.2")
 }
