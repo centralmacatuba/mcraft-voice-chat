@@ -100,8 +100,6 @@ class HttpVoiceTokenProviderTest {
         video.addProperty("roomJoin", roomJoin);
         video.addProperty("canPublish", canPublish);
         video.addProperty("canSubscribe", canSubscribe);
-        video.addProperty("canPublish", true);
-        video.addProperty("canSubscribe", true);
 
         JsonObject claims = new JsonObject();
         claims.addProperty("sub", identity);
