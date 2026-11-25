@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   release:
-    name: Build and publish GitHub release
+    name: Build and attach plugin JAR
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
