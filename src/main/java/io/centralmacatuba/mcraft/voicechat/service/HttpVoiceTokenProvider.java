@@ -132,17 +132,12 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
         if (!expectedRoom.equals(tokenRoom)) {
             throw new IllegalStateException("LiveKit token is restricted to an unexpected room.");
         }
-        if (!video.has("roomJoin") || !video.get("roomJoin").getAsBoolean()) {
-            throw new IllegalStateException("LiveKit token does not grant room participation.");
-        }
-        if (!video.has("canPublish") || !video.get("canPublish").getAsBoolean()) {
-            throw new IllegalStateException("LiveKit token does not grant audio publishing.");
-        }
-        if (!video.has("canSubscribe") || !video.get("canSubscribe").getAsBoolean()) {
-            throw new IllegalStateException("LiveKit token does not grant audio subscriptions.");
-        }
+        requireTrue(video, "roomJoin", "LiveKit token does not grant room participation.");
+        requireTrue(video, "canPublish", "LiveKit token does not grant audio publishing.");
+        requireTrue(video, "canSubscribe", "LiveKit token does not grant audio subscriptions.");
 
-        if (!claims.has("exp") || !claims.get("exp").isJsonPrimitive()) {
+        if (!claims.has("exp") || !claims.get("exp").isJsonPrimitive()
+                || !claims.get("exp").getAsJsonPrimitive().isNumber()) {
             throw new IllegalStateException("LiveKit token is missing an expiration claim.");
         }
         long expiresAt = claims.get("exp").getAsLong();
@@ -153,8 +148,17 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
         }
     }
 
+    private static void requireTrue(JsonObject json, String key, String errorMessage) {
+        if (!json.has(key) || !json.get(key).isJsonPrimitive()
+                || !json.get(key).getAsJsonPrimitive().isBoolean()
+                || !json.get(key).getAsBoolean()) {
+            throw new IllegalStateException(errorMessage);
+        }
+    }
+
     private static String requiredString(JsonObject json, String key) {
-        if (!json.has(key) || !json.get(key).isJsonPrimitive()) {
+        if (!json.has(key) || !json.get(key).isJsonPrimitive()
+                || !json.get(key).getAsJsonPrimitive().isString()) {
             throw new IllegalStateException("Missing string field: " + key);
         }
         String value = json.get(key).getAsString();
