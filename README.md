@@ -2,19 +2,22 @@
 
 A public Paper plugin by [Central Macatuba](https://github.com/centralmacatuba) that implements the `minecraft-web-client:voice-chat` plugin-message protocol and integrates Minecraft players with a LiveKit room.
 
+[Leia em português brasileiro](README.pt.md).
+
 The plugin is designed to be reusable by independent Minecraft servers. Server-specific infrastructure, credentials, room names, and moderation policies belong in each server's configuration, not in this repository.
 
-> **Project status:** Planning and initial implementation. The protocol framing has been checked against the current `minecraft-web-client` client source. End-to-end compatibility with a live Minecraft Web Client and a LiveKit deployment is not yet verified.
+> **Project status:** Initial Paper implementation. Protocol framing and message handling are implemented; token claims are checked and basic moderation commands are available. End-to-end compatibility with a live Minecraft Web Client and LiveKit deployment still requires integration testing.
 
-## Goals
+## Features
 
-- Implement the existing `minecraft-web-client:voice-chat` channel without requiring a modified client.
-- Target Paper first; keep the core logic isolated so a future Velocity integration remains possible.
-- Keep voice media out of Minecraft plugin messages. WebRTC audio travels directly between clients and LiveKit.
-- Coordinate voice sessions, proximity subscriptions, and moderation from the Minecraft server.
-- Support LiveKit Cloud and self-hosted LiveKit through a configurable token backend.
-- Keep all credentials and server-specific endpoints out of source control.
-- Provide tests, reproducible builds, security checks, and clear operator documentation.
+- Implements `minecraft-web-client:voice-chat` without modifying the client.
+- Paper-first architecture with a clean separation between protocol, token provider, player state, and proximity calculation.
+- LiveKit audio travels directly over WebRTC; Minecraft plugin messages carry control/configuration data only.
+- Per-player short-lived token provisioning through an authenticated HTTPS backend.
+- JWT claim checks for participant UUID, room, room-join grant, and expiration.
+- Server-calculated proximity list, configurable hearing range, and changed-payload suppression.
+- `/mcraftvoice status`, `mute <player>`, and `unmute <player>` commands.
+- Secrets are read from an environment variable and are not stored in the repository.
 
 ## Architecture
 
@@ -32,28 +35,18 @@ Voice token backend
 Minecraft Web Client <====== WebRTC audio ======> LiveKit
 ```
 
-The Paper plugin:
-
-- announces voice support to compatible clients;
-- receives client `enable` and `disable` actions;
-- requests an individual, short-lived LiveKit token from the configured backend;
-- sends the LiveKit connection configuration to the client;
-- calculates the server-authoritative set of nearby, voice-enabled players;
-- sends proximity and moderation state to clients;
-- clears player state on disconnect and handles asynchronous token failures.
-
-The client remains responsible for microphone capture, LiveKit WebRTC connectivity, audio subscriptions, 3D positioning, and spatial attenuation.
+The client handles microphone capture, LiveKit WebRTC connectivity, subscriptions, 3D positioning, and spatial attenuation. The plugin handles protocol messages, token provisioning, server-side player state, proximity lists, and moderation state.
 
 ## Client protocol
 
 Channel: `minecraft-web-client:voice-chat`
 
-The current client registers a packet structure containing two Minecraft protocol strings:
+Each plugin message contains two Minecraft protocol strings:
 
-1. `action`: `pstring` with an `i16` length prefix;
-2. `json`: `pstring` with an `i16` length prefix.
+1. `action`: `pstring` with a signed `i16` length prefix;
+2. `json`: `pstring` with a signed `i16` length prefix.
 
-The JSON string contains an object payload. This is **not** a raw JSON plugin message and must not be encoded with Java's `DataOutputStream.writeUTF` modified-UTF format.
+The second string contains a JSON object. It is not raw JSON and must not use Java's modified-UTF `DataOutputStream.writeUTF` encoding.
 
 ### Client → server
 
@@ -66,127 +59,76 @@ The JSON string contains an object payload. This is **not** a raw JSON plugin me
 
 | Action | Payload | Meaning |
 | --- | --- | --- |
-| `available` | `{}` | This server supports voice chat. |
+| `available` | `{}` | Server supports voice chat. |
 | `config` | `VoiceConfig` | LiveKit connection details for this player. |
-| `nearby` | `NearbyPayload` | Players the client should currently be able to hear, plus forced-mute identities. |
+| `nearby` | `NearbyPayload` | Nearby participants and forced-muted identities. |
 
-Expected `VoiceConfig` fields (matching the client interface):
+## Token backend
 
-```json
-{
-  "url": "wss://your-livekit-host",
-  "room": "minecraft-survival",
-  "token": "<short-lived-participant-token>",
-  "identity": "<minecraft-player-uuid>",
-  "hearingRange": 32,
-  "moderated": true
-}
-```
+The plugin never receives or exposes the LiveKit API secret. It calls a trusted HTTPS endpoint using a server-side Bearer credential.
 
-Expected `NearbyPayload` shape:
+The backend must authenticate the server, validate the requested player and room, and mint a short-lived LiveKit JWT with the player's UUID as `sub`, the requested room as `video.room`, and a room-join grant.
 
-```json
-{
-  "players": [
-    {
-      "identity": "<minecraft-player-uuid>",
-      "username": "Player"
-    }
-  ],
-  "forceMuted": []
-}
-```
-
-The protocol is based on the client implementation, not an independently invented message format. Re-check the upstream client source when updating compatibility.
-
-## Token backend contract
-
-The plugin must never expose a LiveKit API secret to a browser or include it in this repository. It calls a trusted HTTPS backend using a server-side bearer credential.
-
-The initial HTTP provider contract is:
-
-- Request: `POST <token-provider.endpoint>`
-- Header: `Authorization: Bearer <server-side-secret>`
-- JSON request body:
-
-```json
-{
-  "playerUuid": "00000000-0000-0000-0000-000000000000",
-  "username": "Player",
-  "serverId": "mcraft",
-  "room": "minecraft-survival"
-}
-```
-
-- JSON response:
-
-```json
-{
-  "url": "wss://your-livekit-host",
-  "room": "minecraft-survival",
-  "token": "<short-lived-participant-token>"
-}
-```
-
-The backend must issue a token whose participant identity (`sub`) is the supplied Minecraft UUID, restrict the token to the requested room, apply appropriate publish/subscribe grants, and use a short expiration. The backend must authenticate the server credential and validate the request; it must not blindly trust arbitrary player identities from public callers.
+The plugin inspects the JWT claims to reject mismatched identities, rooms, missing room-join grants, expired tokens, and tokens whose expiry exceeds the configured maximum. This is claim validation, not cryptographic signature verification; signature validation remains the responsibility of LiveKit and the trusted token backend.
 
 ## Configuration
 
-The implementation will expose server-specific settings through `config.yml`. Secrets should be injected through environment variables or another server-side secret store, never committed to Git.
+The main configuration is `plugins/McraftVoiceChat/config.yml`:
 
-See the generated configuration and installation documentation as implementation progresses.
+```yaml
+voice-chat:
+  enabled: true
+  token-provider:
+    endpoint: "https://your-backend.example/voice/token"
+    bearer-token-env: "MCRAFT_VOICE_BACKEND_TOKEN"
+    request-timeout-seconds: 10
+    max-token-lifetime-seconds: 900
+  session:
+    server-id: "mcraft"
+    room: "minecraft-survival"
+    hearing-range: 32.0
+    moderated: true
+  proximity:
+    update-interval-ticks: 10
+```
 
-## Compatibility and requirements
+Set `MCRAFT_VOICE_BACKEND_TOKEN` in the server process environment. Do not put the secret in `config.yml` or source control.
 
-- Platform: Paper (initial target).
-- Minecraft API baseline: 1.21.11.
-- Java: 21.
-- Client: a Minecraft Web Client build containing the `minecraft-web-client:voice-chat` implementation.
-- Voice transport: LiveKit over WebRTC; the Minecraft proxy is not an audio relay.
+The LiveKit URL must use `wss://`. Plain `ws://` is accepted only for loopback development endpoints.
 
-Velocity and multi-backend network coordination are explicitly outside the initial implementation scope.
+## Commands and permissions
 
-## Development roadmap
+- `/mcraftvoice status` — shows the number of players with an active voice session.
+- `/mcraftvoice mute <player>` — adds the player identity to the forced-mute list sent to nearby clients.
+- `/mcraftvoice unmute <player>` — removes the player from that list.
+- Alias: `/mcvoice`.
 
-### Phase 1 — Protocol and Paper foundation
-- [x] Create the Gradle project and plugin entry point.
-- [x] Implement exact `pstring/i16` packet framing and JSON payload validation.
-- [x] Register incoming/outgoing plugin messaging.
-- [x] Announce `available` to compatible clients.
-- [x] Handle `enable` and `disable` safely.
-- [x] Add unit tests for packet encoding/decoding (written; execution pending).
+Permissions:
 
-### Phase 2 — LiveKit session provisioning
-- [x] Implement the authenticated token-backend HTTP client.
-- [ ] Validate backend responses and bind token identity to the Minecraft UUID.
-- [x] Send the exact `config` payload expected by the client.
-- [x] Handle request timeouts, errors, duplicate requests, and disconnect races.
+- `mcraftvoice.use` — join voice chat (default: everyone).
+- `mcraftvoice.moderate` — run moderation commands (default: operators).
 
-### Phase 3 — Proximity and moderation
-- [x] Calculate nearby voice-enabled players in the same world.
-- [x] Send `nearby` only when the payload changes.
-- [x] Support configurable hearing range and update interval.
-- [ ] Add server-enforced mute state and permission integration.
-- [x] Recalculate proximity across world changes and clean up on quit/plugin shutdown.
+**Moderation limitation:** `mute` controls playback of that participant on compatible clients through the protocol's `forceMuted` field. It does not revoke the participant's LiveKit microphone-publishing grant. Enforcing publish mute at the media server requires an additional LiveKit administrative integration in the trusted backend.
 
-### Phase 4 — Verification and release
-- [ ] Test against the unmodified Minecraft Web Client.
-- [ ] Verify two-player and multi-player audio through LiveKit.
-- [ ] Test reconnects, token expiry, mute, world changes, and proxy forwarding.
-- [ ] Complete operator documentation and release automation.
-- [ ] Review dependency security and build reproducibility.
+## Requirements
 
-## Development
+- Paper API 1.21.11.
+- Java 21.
+- A Minecraft Web Client build containing `minecraft-web-client:voice-chat`.
+- A token backend that implements the documented contract.
+- LiveKit Cloud or a reachable self-hosted LiveKit deployment.
 
-The project uses Gradle and the Java toolchain configured by the build. Run:
+Velocity support and multi-backend network coordination are outside the initial scope.
+
+## Build
 
 ```bash
 gradle test
 gradle build
 ```
 
-The resulting plugin JAR is placed in `build/libs/`.
+The plugin JAR is generated in `build/libs/`.
 
 ## License
 
-The project license will be selected and added before the first public release.
+MIT. See [LICENSE](LICENSE).
