@@ -116,15 +116,16 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
         }
 
         long requestId = requestSequence.incrementAndGet();
+        String playerName = player.getName();
         pendingRequests.put(playerId, requestId);
-        tokenProvider.createSession(playerId, player.getName(), plugin.getServerId(), plugin.getRoomName())
+        tokenProvider.createSession(playerId, playerName, plugin.getServerId(), plugin.getRoomName())
                 .whenComplete((credentials, error) -> {
                     if (!plugin.isEnabled()) {
                         return;
                     }
                     try {
                         Bukkit.getScheduler().runTask(plugin, () -> completeEnable(
-                                playerId, requestId, player.getName(), credentials, error));
+                                playerId, requestId, playerName, credentials, error));
                     } catch (IllegalPluginAccessException ignored) {
                         // The plugin was disabled between the isEnabled check and task scheduling.
                     }
