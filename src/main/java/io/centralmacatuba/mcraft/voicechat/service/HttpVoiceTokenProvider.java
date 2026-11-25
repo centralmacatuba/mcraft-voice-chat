@@ -135,6 +135,12 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
         if (!video.has("roomJoin") || !video.get("roomJoin").getAsBoolean()) {
             throw new IllegalStateException("LiveKit token does not grant room participation.");
         }
+        if (!video.has("canPublish") || !video.get("canPublish").getAsBoolean()) {
+            throw new IllegalStateException("LiveKit token does not grant audio publishing.");
+        }
+        if (!video.has("canSubscribe") || !video.get("canSubscribe").getAsBoolean()) {
+            throw new IllegalStateException("LiveKit token does not grant audio subscriptions.");
+        }
 
         if (!claims.has("exp") || !claims.get("exp").isJsonPrimitive()) {
             throw new IllegalStateException("LiveKit token is missing an expiration claim.");
