@@ -3,7 +3,14 @@ plugins {
 }
 
 group = "io.centralmacatuba.mcraft"
-version = providers.gradleProperty("pluginVersion").get()
+
+val snapshotVersion = providers.fileContents(layout.projectDirectory.file("version.txt"))
+    .asText
+    .map { it.trim() + "-SNAPSHOT" }
+
+version = providers.gradleProperty("pluginVersion")
+    .orElse(snapshotVersion)
+    .get()
 
 repositories {
     mavenCentral()
