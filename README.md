@@ -1,6 +1,6 @@
 # Mcraft Voice Chat
 
-An open-source Paper plugin by [Central Macatuba](https://github.com/centralmacatuba) that implements the `minecraft-web-client:voice-chat` plugin-message protocol and integrates Minecraft players with a LiveKit room.
+A public Paper plugin by [Central Macatuba](https://github.com/centralmacatuba) that implements the `minecraft-web-client:voice-chat` plugin-message protocol and integrates Minecraft players with a LiveKit room.
 
 The plugin is designed to be reusable by independent Minecraft servers. Server-specific infrastructure, credentials, room names, and moderation policies belong in each server's configuration, not in this repository.
 
