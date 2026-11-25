@@ -6,6 +6,12 @@ author: Central Macatuba
 description: Implements the Minecraft Web Client voice-chat protocol with LiveKit integration.
 website: https://github.com/centralmacatuba/mcraft-voice-chat
 
+commands:
+  mcraftvoice:
+    description: Manage the Mcraft voice chat.
+    usage: /mcraftvoice <status|mute <player>|unmute <player>>
+    aliases: [mcvoice]
+
 permissions:
   mcraftvoice.use:
     description: Allows a player to join the voice chat.
