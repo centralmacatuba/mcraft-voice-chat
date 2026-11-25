@@ -104,13 +104,13 @@ Permissões: `mcraftvoice.use` (padrão: todos) e `mcraftvoice.moderate` (padrã
 
 ## Requisitos e build
 
-- Paper API 1.21.11; Java 21; Gradle 9.9.2 ou Gradle 9.x compatível.
+- Paper API 1.21.11; Java 21; Gradle Wrapper 9.9.2 incluído.
 - Uma versão compatível do Minecraft Web Client.
 - Backend confiável que implemente os contratos documentados de tokens e moderação.
 - LiveKit Cloud ou implantação self-hosted acessível.
 
 ```bash
-gradle --no-daemon clean test build
+./gradlew --no-daemon clean test build
 ```
 
 O JAR é gerado em `build/libs/`. A CI disponibiliza o artefato; o envio de uma tag `v*` cria uma GitHub Release. Velocity e coordenação entre múltiplos servidores não fazem parte do escopo inicial.
