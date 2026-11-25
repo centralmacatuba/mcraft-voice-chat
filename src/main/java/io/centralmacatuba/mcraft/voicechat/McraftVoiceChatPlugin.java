@@ -43,7 +43,7 @@ public final class McraftVoiceChatPlugin extends JavaPlugin {
             tokenProvider = new HttpVoiceTokenProvider(URI.create(endpoint), backendToken,
                     Duration.ofSeconds(timeoutSeconds), Duration.ofSeconds(maxTokenLifetimeSeconds));
         } catch (IllegalArgumentException exception) {
-            getLogger().severe("Invalid voice token-provider configuration: " + exception.getMessage());
+            getLogger().severe("Invalid voice token-provider configuration; verify the HTTPS endpoint and timeout settings.");
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
@@ -54,7 +54,7 @@ public final class McraftVoiceChatPlugin extends JavaPlugin {
                 moderationProvider = new HttpVoiceModerationProvider(
                         URI.create(moderationEndpoint), backendToken, Duration.ofSeconds(timeoutSeconds));
             } catch (IllegalArgumentException exception) {
-                getLogger().severe("Server-side voice moderation is unavailable: " + exception.getMessage());
+                getLogger().severe("Server-side voice moderation is unavailable; verify the HTTPS endpoint and timeout settings.");
             }
         } else if (isModerated()) {
             getLogger().warning("Moderation commands are disabled until voice-chat.moderation.endpoint is configured.");

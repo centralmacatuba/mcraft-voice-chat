@@ -79,7 +79,7 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
                         return new VoiceCredentials(url, responseRoom, token);
                     } catch (RuntimeException exception) {
                         throw new CompletionException(new IllegalStateException(
-                                "Token backend returned an invalid response.", exception));
+                                "Token backend returned an invalid response."));
                     }
                 });
     }
@@ -117,7 +117,7 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
                 throw new IllegalStateException("LiveKit token has an empty signature.");
             }
         } catch (RuntimeException exception) {
-            throw new IllegalStateException("LiveKit token has an invalid JWT encoding.", exception);
+            throw new IllegalStateException("LiveKit token has an invalid JWT encoding.");
         }
         if (!header.has("alg") || !header.get("alg").isJsonPrimitive()
                 || !"HS256".equals(header.get("alg").getAsString())) {
