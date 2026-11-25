@@ -40,7 +40,7 @@ Successful response:
 }
 ```
 
-The JWT must use HS256; set `sub` to the exact Minecraft UUID and `video.room` to the requested room; grant `video.roomJoin=true` and `video.canSubscribe=true`; set `video.canPublish=true` only when `forceMuted=false`; and expire within `max-token-lifetime-seconds`.
+The request's `forceMuted` field is a deny-only hint from Paper. The backend must consult its own persisted moderation state and must never let `forceMuted=false` override a stored mute. Compute the effective mute as the persisted policy OR the request hint.\n\nThe JWT must use HS256; set `sub` to the exact Minecraft UUID and `video.room` to the requested room; grant `video.roomJoin=true` and `video.canSubscribe=true`; set `video.canPublish=true` only when `forceMuted=false`; and expire within `max-token-lifetime-seconds`.
 
 The plugin decodes and validates claims but does not cryptographically verify the JWT signature. Signing and signature trust remain the responsibility of the trusted backend and LiveKit.
 

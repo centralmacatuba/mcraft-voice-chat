@@ -61,7 +61,7 @@ See [Backend contract (English)](docs/backend-contract.md) and [Contrato do back
 
 The token endpoint must issue an HS256 LiveKit JWT with the exact player UUID in `sub`, the requested room in `video.room`, `roomJoin=true`, `canSubscribe=true`, and a short expiry. It must set `canPublish=false` for a force-muted player.
 
-The moderation endpoint must persist mute state and enforce it against connected LiveKit participants. A 2xx response means the backend has accepted and durably stored the policy. A client-side `forceMuted` hint is not server-side enforcement.
+The moderation endpoint must persist mute state and enforce it against connected LiveKit participants. The backend's stored policy is authoritative: a false `forceMuted` request hint must never clear a stored mute. A 2xx response means the backend has accepted and durably stored the policy. A client-side `forceMuted` hint is not server-side enforcement.
 
 The plugin validates JWT claims but does not cryptographically verify the signature. Signing and signature trust remain with the backend and LiveKit.
 
