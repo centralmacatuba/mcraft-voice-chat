@@ -4,7 +4,7 @@ voice-chat:
     endpoint: ""
     bearer-token-env: "MCRAFT_VOICE_BACKEND_TOKEN"
     request-timeout-seconds: 10
-    max-token-lifetime-seconds: 900
+    max-token-lifetime-seconds: 600
   session:
     server-id: "mcraft"
     room: "minecraft-survival"

@@ -2,7 +2,7 @@
 
 A public, reusable Paper plugin by [Central Macatuba](https://github.com/centralmacatuba) that implements the `minecraft-web-client:voice-chat` plugin-message protocol and connects Minecraft players to LiveKit.
 
-[Leia em português brasileiro](README.pt.md).
+[Leia em português brasileiro](README.pt.md).\n\nThis is an independent project and is not affiliated with or endorsed by the Prefeitura Municipal de Macatuba.
 
 The plugin is intended for independent Minecraft servers. Server-specific infrastructure, credentials, room names, and moderation policies belong in each server installation, not in this repository.
 
@@ -63,7 +63,7 @@ The token endpoint must issue an HS256 LiveKit JWT with the exact player UUID in
 
 The moderation endpoint must persist mute state and enforce it against connected LiveKit participants. The backend's stored policy is authoritative: a false `forceMuted` request hint must never clear a stored mute. A 2xx response means the backend has accepted and durably stored the policy. A client-side `forceMuted` hint is not server-side enforcement.
 
-The plugin validates JWT claims but does not cryptographically verify the signature. Signing and signature trust remain with the backend and LiveKit.
+The plugin validates JWT claims but does not cryptographically verify the signature. Signing and signature trust remain with the backend and LiveKit. Keep token lifetime at 600 seconds or less. LiveKit Cloud revokes existing tokens when participant permissions change; on self-hosted LiveKit, permission changes affect connected participants but do not invalidate previously issued tokens for reconnects. A stale self-hosted token may remain usable until expiry, so immediate revocation requires additional admission control.
 
 ## Configuration
 
@@ -76,7 +76,7 @@ voice-chat:
     endpoint: "https://backend.example/voice/token"
     bearer-token-env: "MCRAFT_VOICE_BACKEND_TOKEN"
     request-timeout-seconds: 10
-    max-token-lifetime-seconds: 900
+    max-token-lifetime-seconds: 600
   session:
     server-id: "my-server"
     room: "minecraft-survival"

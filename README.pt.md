@@ -2,7 +2,7 @@
 
 Plugin público e reutilizável para Paper, desenvolvido pela [Central Macatuba](https://github.com/centralmacatuba), que implementa o protocolo `minecraft-web-client:voice-chat` e conecta jogadores do Minecraft ao LiveKit.
 
-[Read in English](README.md).
+[Read in English](README.md).\n\nEste é um projeto independente, sem vínculo ou endosso da Prefeitura Municipal de Macatuba.
 
 O plugin foi projetado para servidores Minecraft independentes. Infraestrutura, credenciais, nomes de salas e políticas de moderação específicas de cada servidor pertencem à instalação, não a este repositório.
 
@@ -63,7 +63,7 @@ O endpoint de tokens deve emitir um JWT LiveKit HS256 com o UUID exato do jogado
 
 O endpoint de moderação deve persistir o estado de mute e aplicá-lo aos participantes conectados no LiveKit. A política armazenada pelo backend é autoritativa: uma indicação `forceMuted=false` nunca pode remover um mute persistido. Uma resposta 2xx significa que o backend aceitou e armazenou a política de forma durável. Uma indicação `forceMuted` enviada ao cliente não representa aplicação efetiva no servidor.
 
-O plugin valida as claims do JWT, mas não verifica criptograficamente sua assinatura. A assinatura continua sob responsabilidade do backend confiável e do LiveKit.
+O plugin valida as claims do JWT, mas não verifica criptograficamente sua assinatura. A assinatura continua sob responsabilidade do backend confiável e do LiveKit. Mantenha a validade dos tokens em até 600 segundos. O LiveKit Cloud revoga tokens existentes quando as permissões do participante mudam; no LiveKit self-hosted, a alteração afeta participantes conectados, mas não invalida tokens já emitidos para reconexões. Um token antigo pode continuar utilizável até expirar, portanto a revogação imediata exige uma camada adicional de controle de admissão.
 
 ## Configuração
 
@@ -76,7 +76,7 @@ voice-chat:
     endpoint: "https://backend.example/voice/token"
     bearer-token-env: "MCRAFT_VOICE_BACKEND_TOKEN"
     request-timeout-seconds: 10
-    max-token-lifetime-seconds: 900
+    max-token-lifetime-seconds: 600
   session:
     server-id: "meu-servidor"
     room: "minecraft-survival"

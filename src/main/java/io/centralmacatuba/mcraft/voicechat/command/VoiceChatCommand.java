@@ -31,7 +31,7 @@ public final class VoiceChatCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(ChatColor.GREEN + "Voice chat: " + ChatColor.WHITE
                     + playerManager.getActivePlayers().size() + " jogador(es) com sessão ativa.");
             sender.sendMessage(ChatColor.GRAY + "Moderação no LiveKit: "
-                    + (plugin.isServerModerationAvailable() ? ChatColor.GREEN + "disponível" : ChatColor.RED + "não configurada"));
+                    + (plugin.isServerModerationAvailable() ? ChatColor.GREEN + "configurada" : ChatColor.RED + "não configurada"));
             return true;
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("mute") || args[0].equalsIgnoreCase("unmute"))) {
