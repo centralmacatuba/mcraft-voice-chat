@@ -35,15 +35,20 @@ This checklist describes tests that require a real Paper server, a compatible Mi
 - Verify that the muted UUID appears in other listeners' `nearby.forceMuted` lists.
 - Verify that a token requested after mute has `video.canPublish=false`.
 - Unmute and verify that the backend restores the intended publishing permission.
-- Mute a player who is offline, restart Paper, and verify that the persisted policy is applied when the player reconnects.
+- Mute an offline player whose identity is cached by Paper (the player must have joined at least once); restart Paper and verify that the persisted policy is applied when the player reconnects.
+- Submit mute then unmute (and unmute then mute) rapidly for the same UUID; verify backend requests are processed in submission order and the local mirror reflects only confirmed operations.
+- Submit moderation requests for two different UUIDs; verify they are not unnecessarily serialized with each other.
 - Change mute state while token issuance is pending; verify that the plugin discards credentials with stale publish permissions and requests a fresh token.
 - Make the moderation endpoint return non-2xx or time out; verify that the plugin does not change its local mute state or report success.
 
 ## Invalid responses and security
 
 - Reject token responses with malformed JSON, an unexpected room, an unexpected UUID, an unsupported JWT algorithm, missing grants, expired tokens, or excessive lifetime.
+- Reject token backend bodies larger than 64 KiB without parsing or retaining the full response.
 - Reject LiveKit URLs that are not WSS, except loopback WS during local development.
 - Verify that backend redirects are not followed.
+- Send malformed plugin messages repeatedly; verify warning logs are rate-limited per player.
+- Send unknown actions containing control characters; verify they are sanitized before logging.
 - Confirm that logs never contain the backend Bearer token, LiveKit API secret, or participant JWT.
 - Verify that `VoiceCredentials.toString()` redacts the JWT.
 - Test Cloud and self-hosted token revocation behavior separately. Self-hosted LiveKit does not invalidate already-issued tokens when permissions change; stale tokens can remain usable until expiry.

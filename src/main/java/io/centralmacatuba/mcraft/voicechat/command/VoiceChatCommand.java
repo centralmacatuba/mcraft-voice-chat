@@ -1,9 +1,11 @@
 package io.centralmacatuba.mcraft.voicechat.command;
 
 import io.centralmacatuba.mcraft.voicechat.McraftVoiceChatPlugin;
+import io.centralmacatuba.mcraft.voicechat.service.ModerationRequestQueue;
 import io.centralmacatuba.mcraft.voicechat.service.VoicePlayerManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -13,12 +15,14 @@ import org.bukkit.plugin.IllegalPluginAccessException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.concurrent.CompletionException;
 import java.util.logging.Level;
 
 public final class VoiceChatCommand implements CommandExecutor, TabCompleter {
     private final McraftVoiceChatPlugin plugin;
     private final VoicePlayerManager playerManager;
+    private final ModerationRequestQueue moderationQueue = new ModerationRequestQueue();
 
     public VoiceChatCommand(McraftVoiceChatPlugin plugin, VoicePlayerManager playerManager) {
         this.plugin = plugin;
@@ -47,16 +51,21 @@ public final class VoiceChatCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage(ChatColor.RED + "Backend de moderação não configurado; nenhuma alteração foi aplicada.");
                 return true;
             }
-            Player target = Bukkit.getPlayerExact(args[1]);
-            if (target == null) {
-                sender.sendMessage(ChatColor.RED + "Jogador não encontrado ou offline.");
+
+            OfflinePlayer target = resolveTarget(args[1]);
+            if (target == null || target.getUniqueId() == null) {
+                sender.sendMessage(ChatColor.RED
+                        + "Jogador não encontrado no cache do servidor. O jogador precisa ter entrado ao menos uma vez.");
                 return true;
             }
+            UUID targetId = target.getUniqueId();
+            String targetName = target.getName() == null ? args[1] : target.getName();
             boolean mute = args[0].equalsIgnoreCase("mute");
             sender.sendMessage(ChatColor.YELLOW + "Solicitando " + (mute ? "mute" : "unmute")
-                    + " ao backend para " + target.getName() + "...");
-            plugin.getModerationProvider().setMuted(
-                    target.getUniqueId(), plugin.getServerId(), plugin.getRoomName(), mute)
+                    + " ao backend para " + targetName + "...");
+
+            moderationQueue.submit(targetId, () -> plugin.getModerationProvider().setMuted(
+                            targetId, plugin.getServerId(), plugin.getRoomName(), mute))
                     .whenComplete((ignored, error) -> {
                         if (!plugin.isEnabled()) return;
                         try {
@@ -65,13 +74,13 @@ public final class VoiceChatCommand implements CommandExecutor, TabCompleter {
                                     Throwable cause = error instanceof CompletionException && error.getCause() != null
                                             ? error.getCause() : error;
                                     plugin.getLogger().log(Level.WARNING,
-                                            "Could not apply server-side voice moderation for " + target.getName(), cause);
+                                            "Could not apply server-side voice moderation for " + targetId, cause);
                                     sender.sendMessage(ChatColor.RED
                                             + "O backend não confirmou a moderação. O estado local não foi alterado.");
                                     return;
                                 }
-                                playerManager.setForceMuted(target.getUniqueId(), mute);
-                                sender.sendMessage(ChatColor.GREEN + target.getName()
+                                playerManager.setForceMuted(targetId, mute);
+                                sender.sendMessage(ChatColor.GREEN + targetName
                                         + (mute ? " foi silenciado no LiveKit." : " teve o mute removido no LiveKit."));
                             });
                         } catch (IllegalPluginAccessException ignoredException) {
@@ -82,6 +91,12 @@ public final class VoiceChatCommand implements CommandExecutor, TabCompleter {
         }
         sender.sendMessage(ChatColor.YELLOW + "Uso: /" + label + " <status|mute <jogador>|unmute <jogador>>");
         return true;
+    }
+
+    private OfflinePlayer resolveTarget(String name) {
+        Player online = Bukkit.getPlayerExact(name);
+        if (online != null) return online;
+        return Bukkit.getOfflinePlayerIfCached(name);
     }
 
     @Override

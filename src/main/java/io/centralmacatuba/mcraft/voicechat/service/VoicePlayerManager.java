@@ -29,12 +29,14 @@ import java.util.logging.Level;
 public final class VoicePlayerManager implements PluginMessageListener, Listener {
     private static final long FAILURE_COOLDOWN_MILLIS = 5_000L;
     private static final long REQUEST_COOLDOWN_MILLIS = 1_500L;
+    private static final long MALFORMED_LOG_INTERVAL_MILLIS = 30_000L;
     private final McraftVoiceChatPlugin plugin;
     private final VoiceTokenProvider tokenProvider;
     private final Map<UUID, Player> activePlayers = new HashMap<>();
     private final Map<UUID, Long> pendingRequests = new HashMap<>();
     private final Map<UUID, Long> failedRequestCooldowns = new HashMap<>();
     private final Map<UUID, Long> requestCooldowns = new HashMap<>();
+    private final Map<UUID, Long> malformedLogTimes = new HashMap<>();
     private final Map<UUID, String> lastNearbyPayloads = new HashMap<>();
     private final Set<UUID> forceMuted = new HashSet<>();
     private final AtomicLong requestSequence = new AtomicLong();
@@ -58,14 +60,23 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
         try {
             decoded = VoiceMessageCodec.decode(message);
         } catch (IOException exception) {
-            plugin.getLogger().warning("Rejected malformed voice message from " + player.getName()
-                    + ": " + exception.getMessage());
+            long now = System.currentTimeMillis();
+            long previous = malformedLogTimes.getOrDefault(player.getUniqueId(), 0L);
+            if (now - previous >= MALFORMED_LOG_INTERVAL_MILLIS) {
+                malformedLogTimes.put(player.getUniqueId(), now);
+                plugin.getLogger().warning("Rejected malformed voice protocol message from " + player.getUniqueId()
+                        + "; further malformed messages from this player are rate-limited.");
+            }
             return;
         }
         switch (decoded.action()) {
             case "enable" -> enable(player);
             case "disable" -> disable(player.getUniqueId());
-            default -> plugin.getLogger().fine("Ignoring unsupported client voice action: " + decoded.action());
+            default -> {
+                String safeAction = decoded.action().replaceAll("[^A-Za-z0-9_.-]", "_");
+                if (safeAction.length() > 32) safeAction = safeAction.substring(0, 32);
+                plugin.getLogger().fine("Ignoring unsupported client voice action: " + safeAction);
+            }
         }
     }
 
@@ -90,6 +101,7 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
         disable(playerId);
         failedRequestCooldowns.remove(playerId);
         requestCooldowns.remove(playerId);
+        malformedLogTimes.remove(playerId);
         lastNearbyPayloads.remove(playerId);
         // Persisted moderation policy intentionally survives disconnects.
     }
@@ -136,7 +148,6 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
         if (!Long.valueOf(requestId).equals(pendingRequests.get(playerId))) return;
         boolean currentForceMuted = forceMuted.contains(playerId);
         if (currentForceMuted != requestedForceMuted) {
-            // A mute changed while a token was being issued. Never send credentials with stale publish grants.
             requestCredentials(playerId, playerName, requestId, currentForceMuted);
             return;
         }
@@ -205,6 +216,7 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
         pendingRequests.clear();
         failedRequestCooldowns.clear();
         requestCooldowns.clear();
+        malformedLogTimes.clear();
         lastNearbyPayloads.clear();
         forceMuted.clear();
     }

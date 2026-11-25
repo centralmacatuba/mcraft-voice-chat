@@ -35,15 +35,20 @@ Esta lista descreve testes que exigem um servidor Paper real, uma versão compat
 - Confirme que o UUID silenciado aparece nas listas `nearby.forceMuted` dos demais ouvintes.
 - Confirme que um token solicitado após o mute contém `video.canPublish=false`.
 - Remova o mute e confirme que o backend restaura a permissão de publicação pretendida.
-- Silencie um jogador offline, reinicie o Paper e confirme que a política persistida é aplicada quando ele reconectar.
+- Silencie um jogador offline cuja identidade esteja no cache do Paper (o jogador precisa ter entrado ao menos uma vez); reinicie o Paper e confirme que a política persistida é aplicada quando ele reconectar.
+- Envie mute e depois unmute (e também unmute e depois mute) rapidamente para o mesmo UUID; confirme que o backend processa as solicitações na ordem de envio e que o espelho local reflete somente operações confirmadas.
+- Envie solicitações para dois UUIDs diferentes; confirme que elas não são serializadas desnecessariamente entre si.
 - Altere o estado de mute enquanto a emissão de token estiver pendente; o plugin deve descartar credenciais com permissões antigas e solicitar um novo token.
 - Faça o endpoint retornar status diferente de 2xx ou expirar; o plugin não deve alterar o estado local nem informar sucesso.
 
 ## Respostas inválidas e segurança
 
 - Rejeite JSON malformado, sala ou UUID inesperados, algoritmo JWT não suportado, permissões ausentes, tokens expirados ou com validade excessiva.
+- Rejeite corpos de resposta do backend de tokens maiores que 64 KiB sem analisá-los nem mantê-los integralmente na memória.
 - Rejeite URLs LiveKit que não usem WSS, exceto WS em loopback durante desenvolvimento local.
 - Confirme que redirecionamentos do backend não são seguidos.
+- Envie mensagens de plugin malformadas repetidamente; confirme que os avisos nos logs têm limite de frequência por jogador.
+- Envie ações desconhecidas com caracteres de controle; confirme que são sanitizadas antes de entrar nos logs.
 - Confirme que os logs nunca contêm Bearer token do backend, segredo da API LiveKit ou JWT de participante.
 - Confirme que `VoiceCredentials.toString()` oculta o JWT.
 - Teste separadamente a revogação de tokens no LiveKit Cloud e self-hosted. O LiveKit self-hosted não invalida tokens já emitidos quando as permissões mudam; tokens antigos podem continuar utilizáveis até expirar.

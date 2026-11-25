@@ -38,9 +38,11 @@ O áudio trafega diretamente por WebRTC entre o cliente e o LiveKit. As mensagen
 - Participantes silenciados recebem tokens sem permissão de publicação LiveKit quando o backend respeita o contrato.
 - Solicitações de mute/unmute no servidor por endpoint de moderação separado e autenticado.
 - UUIDs silenciados persistidos e restaurados após reconexões e reinicializações.
+- Moderação offline para identidades já presentes no cache de jogadores offline do servidor.
+- Fila de solicitações de moderação ordenada por jogador, evitando que respostas antigas de mute/unmute sobrescrevam o estado mais recente.
 - Cálculo de proximidade no mesmo mundo e supressão de payloads inalterados.
+- Avisos de pacotes malformados com limite de frequência e leitura limitada das respostas do endpoint de tokens.
 - Comandos `/mcraftvoice status`, `mute <jogador>` e `unmute <jogador>`.
-- CI para build/testes, upload de artefato, Dependabot e GitHub Releases por tag.
 
 ## Protocolo do cliente
 
@@ -91,7 +93,7 @@ voice-chat:
     update-interval-ticks: 10
 ```
 
-Os dois endpoints do backend devem usar HTTPS. A URL LiveKit retornada aos clientes deve usar `wss://`; `ws://` só é aceito em loopback para desenvolvimento.
+Os dois endpoints do backend devem usar HTTPS. A URL LiveKit retornada aos clientes deve usar `wss://`; `ws://` só é aceito em loopback para desenvolvimento local.
 
 Se o endpoint de moderação não estiver configurado, os comandos de moderação permanecem indisponíveis. Isso é intencional: uma indicação de mute enviada ao cliente não é uma fronteira de segurança.
 
@@ -102,24 +104,27 @@ Se o endpoint de moderação não estiver configurado, os comandos de moderaçã
 - `/mcraftvoice unmute <jogador>` — remove a política de mute no backend.
 - Alias: `/mcvoice`.
 
+A moderação offline resolve jogadores pelo cache de identidades offline do Paper. O jogador precisa ter entrado no servidor ao menos uma vez; nomes desconhecidos não são resolvidos por consultas de rede bloqueantes.
+
 Permissões: `mcraftvoice.use` (padrão: todos) e `mcraftvoice.moderate` (padrão: operadores).
 
-## Requisitos e build
+## Build e releases
 
-- Paper API 1.21.11; Java 21; Gradle Wrapper 9.9.2 incluído.
-- Uma versão compatível do Minecraft Web Client.
-- Backend confiável que implemente os contratos documentados de tokens e moderação.
-- LiveKit Cloud ou implantação self-hosted acessível.
+Requisitos: Paper API 1.21.11, Java 21 e Gradle Wrapper 9.9.2 incluído.
 
 ```bash
 ./gradlew --no-daemon clean test build
 ```
 
-O JAR é gerado em `build/libs/`. A CI disponibiliza o artefato; o envio de uma tag `v*` cria uma GitHub Release. Velocity e coordenação entre múltiplos servidores não fazem parte do escopo inicial.
+O JAR é gerado em `build/libs/`. A CI valida metadados YAML/JSON, executa os testes, compila o plugin e disponibiliza o JAR como artefato do workflow.
+
+As releases usam [Conventional Commits](https://www.conventionalcommits.org/) e [Release Please](https://github.com/googleapis/release-please). Em pushes para `principal`, o Release Please cria ou atualiza um pull request com a versão e o changelog. Ao mesclar esse PR, é criada a tag `vX.Y.Z` e a GitHub Release; o workflow acionado pela tag executa testes/build e anexa o JAR à release existente. Configure o segredo de repositório `RELEASE_PLEASE_TOKEN`, conforme descrito em [CONTRIBUTING.md](CONTRIBUTING.md). O manifesto atualmente considera `0.1.0` como versão-base ainda não publicada.
+
+O suporte a Velocity e a coordenação entre múltiplos servidores estão fora do escopo inicial.
 
 ## Contribuição e segurança
 
-Consulte [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) e [SECURITY.md](SECURITY.md). Nunca publique segredos LiveKit, credenciais do backend, JWTs, dados de jogadores ou logs de produção.
+Consulte [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) e [SECURITY.md](SECURITY.md). Nunca publique segredos LiveKit, credenciais do backend, JWTs, dados pessoais de jogadores ou logs de produção.
 
 ## Licença
 

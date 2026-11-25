@@ -32,7 +32,7 @@ Use these prefixes:
 - `feat:` for a user-facing feature (minor release).
 - `fix:` for a bug fix (patch release).
 - `perf:` for a performance improvement (patch release).
-- `feat!:` or another type with `!` for a breaking change (major release).
+- `feat!` or another type with `!` for a breaking change (major release).
 - `docs:`, `test:`, `build:`, `ci:`, `refactor:`, and `chore:` for changes that normally do not trigger a release by themselves.
 
 Examples:
@@ -44,7 +44,9 @@ feat!: replace the backend token contract
 docs: clarify Paper setup
 ```
 
-Release Please runs on pushes to `principal`. It opens or updates a release pull request with the generated changelog and next version. Merge that release pull request to create the `vX.Y.Z` tag and GitHub release. The tag then triggers `.github/workflows/release.yml`, which runs the tests and builds the distributable plugin JAR.
+Release Please runs on pushes to `principal`. It opens or updates a release pull request with the generated changelog and next version. Merge that release pull request to create the `vX.Y.Z` tag and GitHub release. The tag then triggers `.github/workflows/release.yml`, which runs the tests and builds the distributable plugin JAR, then attaches it to the existing release.
+
+The initial Release Please bootstrap commit is `42548d8ebbf8a4ada856c8d55fca61cb453181d1`, which introduced the manifest and version baseline. Preserve this commit in the branch history when integrating the initial implementation. If the branch is squash-merged, update `bootstrap-sha` to the resulting commit on `principal` that contains `.release-please-manifest.json` before enabling Release Please; the configured bootstrap commit must be reachable and must contain the manifest. The manifest and `version.txt` currently track `0.1.0` as the unreleased baseline.
 
 ### Required GitHub secret
 

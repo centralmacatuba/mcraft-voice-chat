@@ -38,9 +38,11 @@ Audio travels directly over WebRTC between the client and LiveKit. Minecraft plu
 - Force-muted participants receive tokens without the LiveKit publish grant when the backend honors the contract.
 - Server-side mute/unmute requests through a separate authenticated moderation endpoint.
 - Persisted mute UUIDs, restored after reconnects and server restarts.
+- Offline moderation for player identities already present in the server's offline-player cache.
+- Per-player ordered moderation requests to prevent stale mute/unmute completions from overwriting newer state.
 - Same-world proximity calculation and changed-payload suppression.
+- Rate-limited malformed-packet warnings and bounded token-provider response parsing.
 - `/mcraftvoice status`, `mute <player>`, and `unmute <player>`.
-- CI build/test workflow, artifact upload, Dependabot, and tag-based GitHub releases.
 
 ## Client protocol
 
@@ -102,20 +104,23 @@ If the moderation endpoint is not configured, moderation commands remain unavail
 - `/mcraftvoice unmute <player>` — remove the backend mute policy.
 - Alias: `/mcvoice`.
 
+Offline moderation resolves players from Paper's cached offline-player identities. A player must have joined the server at least once; arbitrary unknown names are not resolved through a blocking network lookup.
+
 Permissions: `mcraftvoice.use` (default everyone) and `mcraftvoice.moderate` (default operators).
 
-## Requirements and build
+## Build and release
 
-- Paper API 1.21.11; Java 21; checked-in Gradle Wrapper 9.9.2.
-- A compatible Minecraft Web Client build.
-- A trusted backend implementing the documented token and moderation contracts.
-- LiveKit Cloud or a reachable self-hosted LiveKit deployment.
+Requirements: Paper API 1.21.11, Java 21, and the checked-in Gradle Wrapper 9.9.2.
 
 ```bash
 ./gradlew --no-daemon clean test build
 ```
 
-The plugin JAR is generated in `build/libs/`. CI uploads it as a workflow artifact; pushing a `v*` tag builds and publishes a GitHub Release. Velocity support and multi-server coordination are outside the initial scope.
+The plugin JAR is generated in `build/libs/`. CI validates YAML/JSON metadata, runs tests, builds the JAR, and uploads it as a workflow artifact.
+
+Releases use [Conventional Commits](https://www.conventionalcommits.org/) and [Release Please](https://github.com/googleapis/release-please). On pushes to `principal`, Release Please opens or updates a release pull request with the version and changelog. Merging that PR creates the `vX.Y.Z` tag and GitHub Release; the tag-triggered workflow then tests/builds the plugin and attaches the JAR to that existing release. Configure the repository secret `RELEASE_PLEASE_TOKEN` as described in [CONTRIBUTING.md](CONTRIBUTING.md). The manifest currently tracks `0.1.0` as the unreleased baseline.
+
+Velocity support and multi-server coordination are outside the initial scope.
 
 ## Contributing and security
 
