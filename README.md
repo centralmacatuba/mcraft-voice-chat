@@ -59,7 +59,7 @@ Server → client: `available`, `config`, `nearby`.
 
 The backend is a separate service and is not included in this repository. The plugin never receives the LiveKit API secret.
 
-See [Backend contract (English)](docs/backend-contract.md) and [Contrato do backend (Português)](docs/backend-contract.pt-BR.md).
+See [Backend contract (English)](docs/backend-contract.md), [Manual integration test plan](docs/testing.md), and [Contrato do backend (Português)](docs/backend-contract.pt-BR.md).
 
 The token endpoint must issue an HS256 LiveKit JWT with the exact player UUID in `sub`, the requested room in `video.room`, `roomJoin=true`, `canSubscribe=true`, and a short expiry. It must set `canPublish=false` for a force-muted player.
 
