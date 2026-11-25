@@ -12,6 +12,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRegisterChannelEvent;
+import org.bukkit.event.player.PlayerUnregisterChannelEvent;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
 import java.io.IOException;
@@ -69,6 +70,13 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
     public void onChannelRegistered(PlayerRegisterChannelEvent event) {
         if (VoiceMessageCodec.CHANNEL.equals(event.getChannel())) {
             announceAvailable(event.getPlayer());
+        }
+    }
+
+    @EventHandler
+    public void onChannelUnregistered(PlayerUnregisterChannelEvent event) {
+        if (VoiceMessageCodec.CHANNEL.equals(event.getChannel())) {
+            disable(event.getPlayer().getUniqueId());
         }
     }
 
