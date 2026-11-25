@@ -9,6 +9,7 @@ import io.centralmacatuba.mcraft.voicechat.service.VoicePlayerManager;
 import io.centralmacatuba.mcraft.voicechat.service.VoiceProximityService;
 import io.centralmacatuba.mcraft.voicechat.service.VoiceTokenProvider;
 import org.bukkit.Bukkit;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 import java.net.URI;
 import java.time.Duration;
@@ -18,10 +19,25 @@ public final class McraftVoiceChatPlugin extends JavaPlugin {
     private VoiceProximityService proximityService;
     private VoiceTokenProvider tokenProvider;
     private VoiceModerationProvider moderationProvider;
+    private VoiceChatCommand voiceCommand;
+    private boolean voiceChatEnabled;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        voiceChatEnabled = getConfig().getBoolean("voice-chat.enabled", true);
+
+        // Keep the diagnostic command available even when voice chat is intentionally disabled
+        // or the token backend has not been configured yet.
+        voiceCommand = new VoiceChatCommand(this, null);
+        PluginCommand command = getCommand("mcraftvoice");
+        if (command != null) {
+            command.setExecutor(voiceCommand);
+            command.setTabCompleter(voiceCommand);
+        } else {
+            getLogger().severe("Command mcraftvoice is missing from plugin.yml.");
+        }
+
         String endpoint = configuredString("voice-chat.token-provider.endpoint", "");
         String tokenEnvironmentVariable = configuredString(
                 "voice-chat.token-provider.bearer-token-env", "MCRAFT_VOICE_BACKEND_TOKEN");
@@ -30,8 +46,8 @@ public final class McraftVoiceChatPlugin extends JavaPlugin {
         long maxTokenLifetimeSeconds = boundedLong(
                 "voice-chat.token-provider.max-token-lifetime-seconds", 600, 60, 600);
 
-        if (!getConfig().getBoolean("voice-chat.enabled", true)) {
-            getLogger().info("Voice chat is disabled by configuration.");
+        if (!voiceChatEnabled) {
+            getLogger().info("Voice chat is disabled by configuration; /mcraftvoice status remains available.");
             return;
         }
         if (endpoint.isBlank() || backendToken == null || backendToken.isBlank()) {
@@ -61,18 +77,11 @@ public final class McraftVoiceChatPlugin extends JavaPlugin {
         }
 
         playerManager = new VoicePlayerManager(this, tokenProvider);
+        voiceCommand.setPlayerManager(playerManager);
         proximityService = new VoiceProximityService(this, playerManager);
         getServer().getMessenger().registerIncomingPluginChannel(this, VoiceMessageCodec.CHANNEL, playerManager);
         getServer().getMessenger().registerOutgoingPluginChannel(this, VoiceMessageCodec.CHANNEL);
         getServer().getPluginManager().registerEvents(playerManager, this);
-
-        VoiceChatCommand voiceCommand = new VoiceChatCommand(this, playerManager);
-        if (getCommand("mcraftvoice") != null) {
-            getCommand("mcraftvoice").setExecutor(voiceCommand);
-            getCommand("mcraftvoice").setTabCompleter(voiceCommand);
-        } else {
-            getLogger().severe("Command mcraftvoice is missing from plugin.yml.");
-        }
 
         long interval = Math.max(1, getConfig().getLong("voice-chat.proximity.update-interval-ticks", 10));
         Bukkit.getScheduler().runTaskTimer(this, proximityService::tick, interval, interval);
@@ -116,6 +125,18 @@ public final class McraftVoiceChatPlugin extends JavaPlugin {
 
     public boolean isModerated() {
         return getConfig().getBoolean("voice-chat.session.moderated", true);
+    }
+
+    public boolean isVoiceChatEnabled() {
+        return voiceChatEnabled;
+    }
+
+    public boolean isVoiceChatOperational() {
+        return voiceChatEnabled && playerManager != null;
+    }
+
+    public int getActiveVoiceSessionCount() {
+        return playerManager == null ? 0 : playerManager.getActivePlayers().size();
     }
 
     public VoiceModerationProvider getModerationProvider() {

@@ -21,7 +21,7 @@ import java.util.logging.Level;
 
 public final class VoiceChatCommand implements CommandExecutor, TabCompleter {
     private final McraftVoiceChatPlugin plugin;
-    private final VoicePlayerManager playerManager;
+    private VoicePlayerManager playerManager;
     private final ModerationRequestQueue moderationQueue = new ModerationRequestQueue();
 
     public VoiceChatCommand(McraftVoiceChatPlugin plugin, VoicePlayerManager playerManager) {
@@ -29,11 +29,18 @@ public final class VoiceChatCommand implements CommandExecutor, TabCompleter {
         this.playerManager = playerManager;
     }
 
+    public void setPlayerManager(VoicePlayerManager playerManager) {
+        this.playerManager = playerManager;
+    }
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 1 && args[0].equalsIgnoreCase("status")) {
-            sender.sendMessage(ChatColor.GREEN + "Voice chat: " + ChatColor.WHITE
-                    + playerManager.getActivePlayers().size() + " jogador(es) com sessão ativa.");
+            String state = !plugin.isVoiceChatEnabled() ? ChatColor.RED + "desativado"
+                    : plugin.isVoiceChatOperational() ? ChatColor.GREEN + "operacional"
+                    : ChatColor.YELLOW + "indisponível (backend de tokens não configurado)";
+            sender.sendMessage(ChatColor.GREEN + "Voice chat: " + state + ChatColor.WHITE
+                    + " — " + plugin.getActiveVoiceSessionCount() + " jogador(es) com sessão ativa.");
             sender.sendMessage(ChatColor.GRAY + "Moderação no LiveKit: "
                     + (plugin.isServerModerationAvailable() ? ChatColor.GREEN + "configurada" : ChatColor.RED + "não configurada"));
             return true;
@@ -47,7 +54,7 @@ public final class VoiceChatCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage(ChatColor.RED + "A moderação está desativada na configuração.");
                 return true;
             }
-            if (!plugin.isServerModerationAvailable()) {
+            if (!plugin.isServerModerationAvailable() || playerManager == null) {
                 sender.sendMessage(ChatColor.RED + "Backend de moderação não configurado; nenhuma alteração foi aplicada.");
                 return true;
             }
