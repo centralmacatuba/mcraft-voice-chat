@@ -12,7 +12,8 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
-    implementation("com.google.code.gson:gson:2.13.2")
+    // Paper provides Gson at runtime; compileOnly avoids bundling a conflicting copy in the plugin JAR.
+    compileOnly("com.google.code.gson:gson:2.13.2")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.2")
@@ -41,10 +42,4 @@ tasks.processResources {
 tasks.jar {
     archiveBaseName.set("McraftVoiceChat")
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    from({
-        configurations.runtimeClasspath.get()
-            .filter { it.name.endsWith(".jar") }
-            .map { zipTree(it) }
-    })
-    exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "META-INF/NOTICE*", "META-INF/LICENSE*")
 }
