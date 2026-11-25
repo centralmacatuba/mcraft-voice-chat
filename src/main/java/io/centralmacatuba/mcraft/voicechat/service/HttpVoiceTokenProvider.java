@@ -7,7 +7,10 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.Base64;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -19,17 +22,27 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
     private final String bearerToken;
     private final HttpClient client;
     private final Duration requestTimeout;
+    private final Duration maxTokenLifetime;
 
-    public HttpVoiceTokenProvider(URI endpoint, String bearerToken, Duration requestTimeout) {
-        if (!"https".equalsIgnoreCase(endpoint.getScheme())) {
-            throw new IllegalArgumentException("The token-provider endpoint must use HTTPS.");
+    public HttpVoiceTokenProvider(URI endpoint, String bearerToken, Duration requestTimeout,
+                                  Duration maxTokenLifetime) {
+        if (!"https".equalsIgnoreCase(endpoint.getScheme())
+                || endpoint.getHost() == null
+                || endpoint.getUserInfo() != null
+                || endpoint.getFragment() != null) {
+            throw new IllegalArgumentException("The token-provider endpoint must be a valid HTTPS URL.");
         }
         if (bearerToken == null || bearerToken.isBlank()) {
             throw new IllegalArgumentException("The token-provider bearer token is missing.");
         }
+        if (requestTimeout.isZero() || requestTimeout.isNegative()
+                || maxTokenLifetime.isZero() || maxTokenLifetime.isNegative()) {
+            throw new IllegalArgumentException("Token-provider timeouts must be positive.");
+        }
         this.endpoint = endpoint;
         this.bearerToken = bearerToken;
         this.requestTimeout = requestTimeout;
+        this.maxTokenLifetime = maxTokenLifetime;
         this.client = HttpClient.newBuilder().connectTimeout(requestTimeout).build();
     }
 
@@ -65,6 +78,7 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
                             throw new IllegalStateException("Token backend returned an unexpected room.");
                         }
                         validateLiveKitUrl(url);
+                        validateTokenClaims(token, playerUuid, room, maxTokenLifetime);
                         return new VoiceCredentials(url, responseRoom, token);
                     } catch (RuntimeException exception) {
                         throw new CompletionException(new IllegalStateException(
@@ -77,7 +91,7 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
         URI uri = URI.create(value);
         String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
         String host = uri.getHost();
-        if ("wss".equals(scheme) && host != null) {
+        if ("wss".equals(scheme) && host != null && uri.getUserInfo() == null) {
             return;
         }
         if ("ws".equals(scheme) && host != null
@@ -88,6 +102,49 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
             return;
         }
         throw new IllegalStateException("LiveKit URL must use wss://; ws:// is allowed only for loopback testing.");
+    }
+
+    static void validateTokenClaims(String token, UUID expectedIdentity, String expectedRoom,
+                                     Duration maxLifetime) {
+        String[] parts = token.split("\\.", -1);
+        if (parts.length != 3 || parts[1].isBlank() || parts[2].isBlank()) {
+            throw new IllegalStateException("LiveKit token is not a signed JWT.");
+        }
+
+        final JsonObject claims;
+        try {
+            byte[] decoded = Base64.getUrlDecoder().decode(parts[1]);
+            claims = JsonParser.parseString(new String(decoded, StandardCharsets.UTF_8)).getAsJsonObject();
+        } catch (RuntimeException exception) {
+            throw new IllegalStateException("LiveKit token has an invalid JWT payload.", exception);
+        }
+
+        String identity = requiredString(claims, "sub");
+        if (!expectedIdentity.toString().equals(identity)) {
+            throw new IllegalStateException("LiveKit token identity does not match the Minecraft player UUID.");
+        }
+
+        if (!claims.has("video") || !claims.get("video").isJsonObject()) {
+            throw new IllegalStateException("LiveKit token is missing video grants.");
+        }
+        JsonObject video = claims.getAsJsonObject("video");
+        String tokenRoom = requiredString(video, "room");
+        if (!expectedRoom.equals(tokenRoom)) {
+            throw new IllegalStateException("LiveKit token is restricted to an unexpected room.");
+        }
+        if (!video.has("roomJoin") || !video.get("roomJoin").getAsBoolean()) {
+            throw new IllegalStateException("LiveKit token does not grant room participation.");
+        }
+
+        if (!claims.has("exp") || !claims.get("exp").isJsonPrimitive()) {
+            throw new IllegalStateException("LiveKit token is missing an expiration claim.");
+        }
+        long expiresAt = claims.get("exp").getAsLong();
+        long now = Instant.now().getEpochSecond();
+        long maxExpiresAt = now + maxLifetime.toSeconds();
+        if (expiresAt <= now || expiresAt > maxExpiresAt) {
+            throw new IllegalStateException("LiveKit token is expired or exceeds the configured lifetime.");
+        }
     }
 
     private static String requiredString(JsonObject json, String key) {
