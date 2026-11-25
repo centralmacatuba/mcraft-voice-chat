@@ -15,7 +15,6 @@ import org.bukkit.event.player.PlayerRegisterChannelEvent;
 import org.bukkit.event.player.PlayerUnregisterChannelEvent;
 import org.bukkit.plugin.IllegalPluginAccessException;
 import org.bukkit.plugin.messaging.PluginMessageListener;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -30,7 +29,6 @@ import java.util.logging.Level;
 public final class VoicePlayerManager implements PluginMessageListener, Listener {
     private static final long FAILURE_COOLDOWN_MILLIS = 5_000L;
     private static final long REQUEST_COOLDOWN_MILLIS = 1_500L;
-
     private final McraftVoiceChatPlugin plugin;
     private final VoiceTokenProvider tokenProvider;
     private final Map<UUID, Player> activePlayers = new HashMap<>();
@@ -44,13 +42,18 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
     public VoicePlayerManager(McraftVoiceChatPlugin plugin, VoiceTokenProvider tokenProvider) {
         this.plugin = plugin;
         this.tokenProvider = tokenProvider;
+        for (String value : plugin.getConfig().getStringList("voice-chat.moderation.muted-players")) {
+            try {
+                forceMuted.add(UUID.fromString(value));
+            } catch (IllegalArgumentException exception) {
+                plugin.getLogger().warning("Ignoring invalid UUID in voice-chat.moderation.muted-players.");
+            }
+        }
     }
 
     @Override
     public void onPluginMessageReceived(String channel, Player player, byte[] message) {
-        if (!VoiceMessageCodec.CHANNEL.equals(channel)) {
-            return;
-        }
+        if (!VoiceMessageCodec.CHANNEL.equals(channel)) return;
         final VoiceMessage decoded;
         try {
             decoded = VoiceMessageCodec.decode(message);
@@ -59,7 +62,6 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
                     + ": " + exception.getMessage());
             return;
         }
-
         switch (decoded.action()) {
             case "enable" -> enable(player);
             case "disable" -> disable(player.getUniqueId());
@@ -74,16 +76,12 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
 
     @EventHandler
     public void onChannelRegistered(PlayerRegisterChannelEvent event) {
-        if (VoiceMessageCodec.CHANNEL.equals(event.getChannel())) {
-            announceAvailable(event.getPlayer());
-        }
+        if (VoiceMessageCodec.CHANNEL.equals(event.getChannel())) announceAvailable(event.getPlayer());
     }
 
     @EventHandler
     public void onChannelUnregistered(PlayerUnregisterChannelEvent event) {
-        if (VoiceMessageCodec.CHANNEL.equals(event.getChannel())) {
-            disable(event.getPlayer().getUniqueId());
-        }
+        if (VoiceMessageCodec.CHANNEL.equals(event.getChannel())) disable(event.getPlayer().getUniqueId());
     }
 
     @EventHandler
@@ -92,74 +90,54 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
         disable(playerId);
         failedRequestCooldowns.remove(playerId);
         requestCooldowns.remove(playerId);
-        forceMuted.remove(playerId);
         lastNearbyPayloads.remove(playerId);
+        // Persisted moderation policy intentionally survives disconnects.
     }
 
     public void announceAvailable(Player player) {
-        if (!player.isOnline() || !player.getListeningPluginChannels().contains(VoiceMessageCodec.CHANNEL)) {
-            return;
+        if (player.isOnline() && player.getListeningPluginChannels().contains(VoiceMessageCodec.CHANNEL)) {
+            send(player, "available", new JsonObject());
         }
-        send(player, "available", new JsonObject());
     }
 
     private void enable(Player player) {
         UUID playerId = player.getUniqueId();
-        if (activePlayers.containsKey(playerId) || pendingRequests.containsKey(playerId)) {
-            return;
-        }
-        if (!player.hasPermission("mcraftvoice.use")) {
-            plugin.getLogger().fine("Player " + player.getName() + " does not have mcraftvoice.use.");
-            return;
-        }
-
+        if (activePlayers.containsKey(playerId) || pendingRequests.containsKey(playerId)) return;
+        if (!player.hasPermission("mcraftvoice.use")) return;
         long now = System.currentTimeMillis();
         Long cooldownUntil = failedRequestCooldowns.get(playerId);
-        if (cooldownUntil != null && cooldownUntil > now) {
-            return;
-        }
+        if (cooldownUntil != null && cooldownUntil > now) return;
         Long lastRequestAt = requestCooldowns.get(playerId);
-        if (lastRequestAt != null && now - lastRequestAt < REQUEST_COOLDOWN_MILLIS) {
-            return;
-        }
+        if (lastRequestAt != null && now - lastRequestAt < REQUEST_COOLDOWN_MILLIS) return;
 
         requestCooldowns.put(playerId, now);
         long requestId = requestSequence.incrementAndGet();
         String playerName = player.getName();
         pendingRequests.put(playerId, requestId);
-        tokenProvider.createSession(playerId, playerName, plugin.getServerId(), plugin.getRoomName())
+        tokenProvider.createSession(playerId, playerName, plugin.getServerId(), plugin.getRoomName(),
+                        forceMuted.contains(playerId))
                 .whenComplete((credentials, error) -> {
-                    if (!plugin.isEnabled()) {
-                        return;
-                    }
+                    if (!plugin.isEnabled()) return;
                     try {
-                        Bukkit.getScheduler().runTask(plugin, () -> completeEnable(
-                                playerId, requestId, playerName, credentials, error));
+                        Bukkit.getScheduler().runTask(plugin, () ->
+                                completeEnable(playerId, requestId, playerName, credentials, error));
                     } catch (IllegalPluginAccessException ignored) {
-                        // The plugin was disabled between the isEnabled check and task scheduling.
+                        // Plugin disabled while the asynchronous request was completing.
                     }
                 });
     }
 
     private void completeEnable(UUID playerId, long requestId, String playerName,
                                 VoiceCredentials credentials, Throwable error) {
-        if (!Long.valueOf(requestId).equals(pendingRequests.get(playerId))) {
-            return;
-        }
+        if (!Long.valueOf(requestId).equals(pendingRequests.get(playerId))) return;
         pendingRequests.remove(playerId);
-
         if (error != null) {
             failedRequestCooldowns.put(playerId, System.currentTimeMillis() + FAILURE_COOLDOWN_MILLIS);
-            plugin.getLogger().log(Level.WARNING,
-                    "Could not provision voice session for " + playerName, error);
+            plugin.getLogger().log(Level.WARNING, "Could not provision voice session for " + playerName, error);
             return;
         }
-
         Player onlinePlayer = Bukkit.getPlayer(playerId);
-        if (onlinePlayer == null || !onlinePlayer.isOnline()) {
-            return;
-        }
-
+        if (onlinePlayer == null || !onlinePlayer.isOnline()) return;
         failedRequestCooldowns.remove(playerId);
         activePlayers.put(playerId, onlinePlayer);
         lastNearbyPayloads.remove(playerId);
@@ -184,16 +162,12 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
     }
 
     public void sendNearby(Player player, JsonArray nearbyPlayers, JsonArray mutedIdentities) {
-        if (!activePlayers.containsKey(player.getUniqueId())) {
-            return;
-        }
+        if (!activePlayers.containsKey(player.getUniqueId())) return;
         JsonObject payload = new JsonObject();
         payload.add("players", nearbyPlayers);
         payload.add("forceMuted", mutedIdentities);
         String serialized = payload.toString();
-        if (serialized.equals(lastNearbyPayloads.get(player.getUniqueId()))) {
-            return;
-        }
+        if (serialized.equals(lastNearbyPayloads.get(player.getUniqueId()))) return;
         lastNearbyPayloads.put(player.getUniqueId(), serialized);
         send(player, "nearby", payload);
     }
@@ -206,13 +180,13 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
         return forceMuted.contains(playerId);
     }
 
-    /** Controls the force-muted identities advertised to nearby compatible clients. */
+    /** Persist the local mirror only after the trusted backend confirms enforcement. */
     public void setForceMuted(UUID playerId, boolean muted) {
-        if (muted) {
-            forceMuted.add(playerId);
-        } else {
-            forceMuted.remove(playerId);
-        }
+        boolean changed = muted ? forceMuted.add(playerId) : forceMuted.remove(playerId);
+        if (!changed) return;
+        plugin.getConfig().set("voice-chat.moderation.muted-players",
+                forceMuted.stream().map(UUID::toString).sorted().toList());
+        plugin.saveConfig();
         lastNearbyPayloads.clear();
     }
 
@@ -226,12 +200,9 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
     }
 
     private void send(Player player, String action, JsonObject payload) {
-        if (!player.isOnline() || !player.getListeningPluginChannels().contains(VoiceMessageCodec.CHANNEL)) {
-            return;
-        }
+        if (!player.isOnline() || !player.getListeningPluginChannels().contains(VoiceMessageCodec.CHANNEL)) return;
         try {
-            player.sendPluginMessage(plugin, VoiceMessageCodec.CHANNEL,
-                    VoiceMessageCodec.encode(action, payload));
+            player.sendPluginMessage(plugin, VoiceMessageCodec.CHANNEL, VoiceMessageCodec.encode(action, payload));
         } catch (IOException exception) {
             plugin.getLogger().log(Level.WARNING, "Could not encode voice action " + action, exception);
         }
