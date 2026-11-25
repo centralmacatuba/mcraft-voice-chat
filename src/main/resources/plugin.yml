@@ -1,0 +1,7 @@
+name: McraftVoiceChat
+version: '${version}'
+main: io.centralmacatuba.mcraft.voicechat.McraftVoiceChatPlugin
+api-version: '1.21'
+author: Central Macatuba
+description: Implements the Minecraft Web Client voice-chat protocol with LiveKit integration.
+website: https://github.com/centralmacatuba/mcraft-voice-chat
