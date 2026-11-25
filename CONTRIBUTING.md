@@ -12,7 +12,6 @@ Thanks for helping improve Mcraft Voice Chat!
 
 ## Development requirements
 
-- Java 21.
 - Java 21; the checked-in Gradle Wrapper downloads and verifies Gradle 9.9.2.
 - Paper API is resolved from the Paper Maven repository.
 
