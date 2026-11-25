@@ -149,25 +149,25 @@ Velocity and multi-backend network coordination are explicitly outside the initi
 ## Development roadmap
 
 ### Phase 1 — Protocol and Paper foundation
-- [ ] Create the Gradle project and plugin entry point.
-- [ ] Implement exact `pstring/i16` packet framing and JSON payload validation.
-- [ ] Register incoming/outgoing plugin messaging.
-- [ ] Announce `available` to compatible clients.
-- [ ] Handle `enable` and `disable` safely.
-- [ ] Add unit tests for packet encoding/decoding.
+- [x] Create the Gradle project and plugin entry point.
+- [x] Implement exact `pstring/i16` packet framing and JSON payload validation.
+- [x] Register incoming/outgoing plugin messaging.
+- [x] Announce `available` to compatible clients.
+- [x] Handle `enable` and `disable` safely.
+- [x] Add unit tests for packet encoding/decoding (written; execution pending).
 
 ### Phase 2 — LiveKit session provisioning
-- [ ] Implement the authenticated token-backend HTTP client.
+- [x] Implement the authenticated token-backend HTTP client.
 - [ ] Validate backend responses and bind token identity to the Minecraft UUID.
-- [ ] Send the exact `config` payload expected by the client.
-- [ ] Handle timeouts, errors, duplicate requests, and disconnect races.
+- [x] Send the exact `config` payload expected by the client.
+- [x] Handle request timeouts, errors, duplicate requests, and disconnect races.
 
 ### Phase 3 — Proximity and moderation
-- [ ] Calculate nearby voice-enabled players in the same world.
-- [ ] Send `nearby` only when the payload changes.
-- [ ] Support configurable hearing range and update interval.
+- [x] Calculate nearby voice-enabled players in the same world.
+- [x] Send `nearby` only when the payload changes.
+- [x] Support configurable hearing range and update interval.
 - [ ] Add server-enforced mute state and permission integration.
-- [ ] Clean up all state on world changes, quit, and plugin shutdown.
+- [x] Recalculate proximity across world changes and clean up on quit/plugin shutdown.
 
 ### Phase 4 — Verification and release
 - [ ] Test against the unmodified Minecraft Web Client.
