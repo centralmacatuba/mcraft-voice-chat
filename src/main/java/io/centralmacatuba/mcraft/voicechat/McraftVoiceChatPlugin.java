@@ -28,10 +28,10 @@ public final class McraftVoiceChatPlugin extends JavaPlugin {
         tokenEnvironmentVariable = tokenEnvironmentVariable == null || tokenEnvironmentVariable.isBlank()
                 ? "MCRAFT_VOICE_BACKEND_TOKEN" : tokenEnvironmentVariable.trim();
         String backendToken = System.getenv(tokenEnvironmentVariable);
-        int timeoutSeconds = Math.max(1, getConfig().getInt(
-                "voice-chat.token-provider.request-timeout-seconds", 10));
-        long maxTokenLifetimeSeconds = Math.max(60, getConfig().getLong(
-                "voice-chat.token-provider.max-token-lifetime-seconds", 900));
+        int timeoutSeconds = Math.max(1, Math.min(60, getConfig().getInt(
+                "voice-chat.token-provider.request-timeout-seconds", 10)));
+        long maxTokenLifetimeSeconds = Math.max(60, Math.min(3600, getConfig().getLong(
+                "voice-chat.token-provider.max-token-lifetime-seconds", 900)));
 
         if (!getConfig().getBoolean("voice-chat.enabled", true)) {
             getLogger().info("Voice chat is disabled by configuration.");
