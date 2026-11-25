@@ -40,7 +40,9 @@ Resposta:
 }
 ```
 
-O campo `forceMuted` da requisição é apenas uma indicação adicional de bloqueio enviada pelo Paper. O backend deve consultar sua própria política persistida e nunca permitir que `forceMuted=false` sobrescreva um mute armazenado. Calcule o mute efetivo como a política persistida OU a indicação recebida.\n\nO JWT deve usar HS256; definir `sub` como o UUID Minecraft exato e `video.room` como a sala solicitada; conceder `video.roomJoin=true` e `video.canSubscribe=true`; definir `video.canPublish=true` somente quando `forceMuted=false`; e expirar dentro de `max-token-lifetime-seconds`.
+O campo `forceMuted` da requisição é apenas uma indicação adicional de bloqueio enviada pelo Paper. O backend deve consultar sua própria política persistida e nunca permitir que `forceMuted=false` sobrescreva um mute armazenado. Calcule o mute efetivo como a política persistida OU a indicação recebida.
+
+O JWT deve usar HS256; definir `sub` como o UUID Minecraft exato e `video.room` como a sala solicitada; conceder `video.roomJoin=true` e `video.canSubscribe=true`; definir `video.canPublish=true` somente quando `forceMuted=false`; e expirar dentro de `max-token-lifetime-seconds`.
 
 O plugin decodifica e valida as claims, mas não verifica criptograficamente a assinatura do JWT. A assinatura e sua confiança continuam sob responsabilidade do backend confiável e do LiveKit.
 
