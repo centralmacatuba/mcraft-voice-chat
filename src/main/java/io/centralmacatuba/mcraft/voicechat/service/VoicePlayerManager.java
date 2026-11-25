@@ -114,22 +114,32 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
         long requestId = requestSequence.incrementAndGet();
         String playerName = player.getName();
         pendingRequests.put(playerId, requestId);
+        requestCredentials(playerId, playerName, requestId, forceMuted.contains(playerId));
+    }
+
+    private void requestCredentials(UUID playerId, String playerName, long requestId, boolean requestedForceMuted) {
         tokenProvider.createSession(playerId, playerName, plugin.getServerId(), plugin.getRoomName(),
-                        forceMuted.contains(playerId))
+                        requestedForceMuted)
                 .whenComplete((credentials, error) -> {
                     if (!plugin.isEnabled()) return;
                     try {
-                        Bukkit.getScheduler().runTask(plugin, () ->
-                                completeEnable(playerId, requestId, playerName, credentials, error));
+                        Bukkit.getScheduler().runTask(plugin, () -> completeEnable(
+                                playerId, requestId, playerName, requestedForceMuted, credentials, error));
                     } catch (IllegalPluginAccessException ignored) {
                         // Plugin disabled while the asynchronous request was completing.
                     }
                 });
     }
 
-    private void completeEnable(UUID playerId, long requestId, String playerName,
+    private void completeEnable(UUID playerId, long requestId, String playerName, boolean requestedForceMuted,
                                 VoiceCredentials credentials, Throwable error) {
         if (!Long.valueOf(requestId).equals(pendingRequests.get(playerId))) return;
+        boolean currentForceMuted = forceMuted.contains(playerId);
+        if (currentForceMuted != requestedForceMuted) {
+            // A mute changed while a token was being issued. Never send credentials with stale publish grants.
+            requestCredentials(playerId, playerName, requestId, currentForceMuted);
+            return;
+        }
         pendingRequests.remove(playerId);
         if (error != null) {
             failedRequestCooldowns.put(playerId, System.currentTimeMillis() + FAILURE_COOLDOWN_MILLIS);
