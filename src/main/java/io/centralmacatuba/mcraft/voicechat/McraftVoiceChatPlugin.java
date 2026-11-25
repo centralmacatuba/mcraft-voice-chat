@@ -1,5 +1,6 @@
 package io.centralmacatuba.mcraft.voicechat;
 
+import io.centralmacatuba.mcraft.voicechat.command.VoiceChatCommand;
 import io.centralmacatuba.mcraft.voicechat.protocol.VoiceMessageCodec;
 import io.centralmacatuba.mcraft.voicechat.service.HttpVoiceTokenProvider;
 import io.centralmacatuba.mcraft.voicechat.service.VoicePlayerManager;
@@ -20,12 +21,17 @@ public final class McraftVoiceChatPlugin extends JavaPlugin {
     public void onEnable() {
         saveDefaultConfig();
 
-        String endpoint = getConfig().getString("voice-chat.token-provider.endpoint", "").trim();
+        String endpoint = getConfig().getString("voice-chat.token-provider.endpoint", "");
+        endpoint = endpoint == null ? "" : endpoint.trim();
         String tokenEnvironmentVariable = getConfig().getString(
                 "voice-chat.token-provider.bearer-token-env", "MCRAFT_VOICE_BACKEND_TOKEN");
+        tokenEnvironmentVariable = tokenEnvironmentVariable == null || tokenEnvironmentVariable.isBlank()
+                ? "MCRAFT_VOICE_BACKEND_TOKEN" : tokenEnvironmentVariable.trim();
         String backendToken = System.getenv(tokenEnvironmentVariable);
         int timeoutSeconds = Math.max(1, getConfig().getInt(
                 "voice-chat.token-provider.request-timeout-seconds", 10));
+        long maxTokenLifetimeSeconds = Math.max(60, getConfig().getLong(
+                "voice-chat.token-provider.max-token-lifetime-seconds", 900));
 
         if (!getConfig().getBoolean("voice-chat.enabled", true)) {
             getLogger().info("Voice chat is disabled by configuration.");
@@ -40,7 +46,7 @@ public final class McraftVoiceChatPlugin extends JavaPlugin {
 
         try {
             tokenProvider = new HttpVoiceTokenProvider(URI.create(endpoint), backendToken,
-                    Duration.ofSeconds(timeoutSeconds));
+                    Duration.ofSeconds(timeoutSeconds), Duration.ofSeconds(maxTokenLifetimeSeconds));
         } catch (IllegalArgumentException exception) {
             getLogger().severe("Invalid voice token-provider configuration: " + exception.getMessage());
             getServer().getPluginManager().disablePlugin(this);
@@ -54,6 +60,14 @@ public final class McraftVoiceChatPlugin extends JavaPlugin {
                 this, VoiceMessageCodec.CHANNEL, playerManager);
         getServer().getMessenger().registerOutgoingPluginChannel(this, VoiceMessageCodec.CHANNEL);
         getServer().getPluginManager().registerEvents(playerManager, this);
+
+        VoiceChatCommand voiceCommand = new VoiceChatCommand(this, playerManager);
+        if (getCommand("mcraftvoice") != null) {
+            getCommand("mcraftvoice").setExecutor(voiceCommand);
+            getCommand("mcraftvoice").setTabCompleter(voiceCommand);
+        } else {
+            getLogger().severe("Command mcraftvoice is missing from plugin.yml.");
+        }
 
         long interval = Math.max(1, getConfig().getLong(
                 "voice-chat.proximity.update-interval-ticks", 10));
@@ -72,15 +86,21 @@ public final class McraftVoiceChatPlugin extends JavaPlugin {
     }
 
     public String getRoomName() {
-        return getConfig().getString("voice-chat.session.room", "minecraft-survival");
+        String room = getConfig().getString("voice-chat.session.room", "minecraft-survival");
+        return room == null || room.isBlank() ? "minecraft-survival" : room.trim();
     }
 
     public String getServerId() {
-        return getConfig().getString("voice-chat.session.server-id", "mcraft");
+        String serverId = getConfig().getString("voice-chat.session.server-id", "mcraft");
+        return serverId == null || serverId.isBlank() ? "mcraft" : serverId.trim();
     }
 
     public double getHearingRange() {
-        return Math.max(0.0, getConfig().getDouble("voice-chat.session.hearing-range", 32.0));
+        double configured = getConfig().getDouble("voice-chat.session.hearing-range", 32.0);
+        if (!Double.isFinite(configured)) {
+            return 32.0;
+        }
+        return Math.min(512.0, Math.max(0.0, configured));
     }
 
     public boolean isModerated() {
