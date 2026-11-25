@@ -8,6 +8,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -63,15 +64,30 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
                         if (!room.equals(responseRoom)) {
                             throw new IllegalStateException("Token backend returned an unexpected room.");
                         }
-                        if (!(url.startsWith("wss://") || url.startsWith("ws://"))) {
-                            throw new IllegalStateException("LiveKit URL must use wss:// (or ws:// for local testing).");
-                        }
+                        validateLiveKitUrl(url);
                         return new VoiceCredentials(url, responseRoom, token);
                     } catch (RuntimeException exception) {
                         throw new CompletionException(new IllegalStateException(
                                 "Token backend returned an invalid response.", exception));
                     }
                 });
+    }
+
+    private static void validateLiveKitUrl(String value) {
+        URI uri = URI.create(value);
+        String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
+        String host = uri.getHost();
+        if ("wss".equals(scheme) && host != null) {
+            return;
+        }
+        if ("ws".equals(scheme) && host != null
+                && (host.equalsIgnoreCase("localhost")
+                || host.equals("127.0.0.1")
+                || host.equals("::1")
+                || host.equals("[::1]"))) {
+            return;
+        }
+        throw new IllegalStateException("LiveKit URL must use wss://; ws:// is allowed only for loopback testing.");
     }
 
     private static String requiredString(JsonObject json, String key) {
