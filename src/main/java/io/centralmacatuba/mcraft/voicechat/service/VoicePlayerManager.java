@@ -13,6 +13,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRegisterChannelEvent;
 import org.bukkit.event.player.PlayerUnregisterChannelEvent;
+import org.bukkit.plugin.IllegalPluginAccessException;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
 import java.io.IOException;
@@ -27,10 +28,13 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 
 public final class VoicePlayerManager implements PluginMessageListener, Listener {
+    private static final long FAILURE_COOLDOWN_MILLIS = 5_000L;
+
     private final McraftVoiceChatPlugin plugin;
     private final VoiceTokenProvider tokenProvider;
     private final Map<UUID, Player> activePlayers = new HashMap<>();
     private final Map<UUID, Long> pendingRequests = new HashMap<>();
+    private final Map<UUID, Long> failedRequestCooldowns = new HashMap<>();
     private final Map<UUID, String> lastNearbyPayloads = new HashMap<>();
     private final Set<UUID> forceMuted = new HashSet<>();
     private final AtomicLong requestSequence = new AtomicLong();
@@ -84,6 +88,7 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
     public void onPlayerQuit(PlayerQuitEvent event) {
         UUID playerId = event.getPlayer().getUniqueId();
         disable(playerId);
+        failedRequestCooldowns.remove(playerId);
         forceMuted.remove(playerId);
         lastNearbyPayloads.remove(playerId);
     }
@@ -105,28 +110,50 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
             return;
         }
 
+        Long cooldownUntil = failedRequestCooldowns.get(playerId);
+        if (cooldownUntil != null && cooldownUntil > System.currentTimeMillis()) {
+            return;
+        }
+
         long requestId = requestSequence.incrementAndGet();
         pendingRequests.put(playerId, requestId);
         tokenProvider.createSession(playerId, player.getName(), plugin.getServerId(), plugin.getRoomName())
-                .whenComplete((credentials, error) -> Bukkit.getScheduler().runTask(plugin, () -> {
-                    if (!Long.valueOf(requestId).equals(pendingRequests.get(playerId))) {
+                .whenComplete((credentials, error) -> {
+                    if (!plugin.isEnabled()) {
                         return;
                     }
-                    pendingRequests.remove(playerId);
-                    Player onlinePlayer = Bukkit.getPlayer(playerId);
-                    if (error != null) {
-                        plugin.getLogger().log(Level.WARNING,
-                                "Could not provision voice session for " + player.getName(), error);
-                        return;
+                    try {
+                        Bukkit.getScheduler().runTask(plugin, () -> completeEnable(
+                                playerId, requestId, player.getName(), credentials, error));
+                    } catch (IllegalPluginAccessException ignored) {
+                        // The plugin was disabled between the isEnabled check and task scheduling.
                     }
-                    if (onlinePlayer == null || !onlinePlayer.isOnline()) {
-                        return;
-                    }
+                });
+    }
 
-                    activePlayers.put(playerId, onlinePlayer);
-                    lastNearbyPayloads.remove(playerId);
-                    send(onlinePlayer, "config", createClientConfig(onlinePlayer, credentials));
-                }));
+    private void completeEnable(UUID playerId, long requestId, String playerName,
+                                VoiceCredentials credentials, Throwable error) {
+        if (!Long.valueOf(requestId).equals(pendingRequests.get(playerId))) {
+            return;
+        }
+        pendingRequests.remove(playerId);
+
+        if (error != null) {
+            failedRequestCooldowns.put(playerId, System.currentTimeMillis() + FAILURE_COOLDOWN_MILLIS);
+            plugin.getLogger().log(Level.WARNING,
+                    "Could not provision voice session for " + playerName, error);
+            return;
+        }
+
+        Player onlinePlayer = Bukkit.getPlayer(playerId);
+        if (onlinePlayer == null || !onlinePlayer.isOnline()) {
+            return;
+        }
+
+        failedRequestCooldowns.remove(playerId);
+        activePlayers.put(playerId, onlinePlayer);
+        lastNearbyPayloads.remove(playerId);
+        send(onlinePlayer, "config", createClientConfig(onlinePlayer, credentials));
     }
 
     private JsonObject createClientConfig(Player player, VoiceCredentials credentials) {
@@ -169,7 +196,7 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
         return forceMuted.contains(playerId);
     }
 
-    /** Server-side moderation hook for commands or other plugins. */
+    /** Controls the force-muted identities advertised to nearby compatible clients. */
     public void setForceMuted(UUID playerId, boolean muted) {
         if (muted) {
             forceMuted.add(playerId);
@@ -182,6 +209,7 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
     public void shutdown() {
         activePlayers.clear();
         pendingRequests.clear();
+        failedRequestCooldowns.clear();
         lastNearbyPayloads.clear();
         forceMuted.clear();
     }
