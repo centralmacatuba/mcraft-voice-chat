@@ -104,13 +104,13 @@ Permissions: `mcraftvoice.use` (default everyone) and `mcraftvoice.moderate` (de
 
 ## Requirements and build
 
-- Paper API 1.21.11; Java 21; Gradle 9.9.2 or compatible Gradle 9.x.
+- Paper API 1.21.11; Java 21; Gradle Wrapper 9.9.2.
 - A compatible Minecraft Web Client build.
 - A trusted backend implementing the documented token and moderation contracts.
 - LiveKit Cloud or a reachable self-hosted LiveKit deployment.
 
 ```bash
-gradle --no-daemon clean test build
+./gradlew --no-daemon clean test build
 ```
 
 The plugin JAR is generated in `build/libs/`. CI uploads it as a workflow artifact; pushing a `v*` tag builds and publishes a GitHub Release. Velocity support and multi-server coordination are outside the initial scope.
