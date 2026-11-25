@@ -168,7 +168,7 @@ Velocity and multi-backend network coordination are explicitly outside the initi
 - [ ] Calculate nearby voice-enabled players in the same world.
 - [ ] Send `nearby` only when the payload changes.
 - [ ] Support configurable hearing range and update interval.
-- [ ] Add server-enforced mute state and permission integration.
+- [ ] Add server-controlled forced-mute state and permission integration; evaluate LiveKit-side publish revocation separately.
 - [ ] Clean up all state on world changes, quit, and plugin shutdown.
 
 ### Phase 4 — Verification and release
