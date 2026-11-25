@@ -64,12 +64,33 @@ class HttpVoiceTokenProviderTest {
     }
 
     @Test
+    void rejectsTokenWithoutPublishGrant() {
+        String token = tokenWithGrants(PLAYER_ID.toString(), ROOM,
+                Instant.now().plusSeconds(300).getEpochSecond(), true, false, true);
+        assertThrows(IllegalStateException.class, () -> HttpVoiceTokenProvider.validateTokenClaims(
+                token, PLAYER_ID, ROOM, Duration.ofMinutes(15)));
+    }
+
+    @Test
+    void rejectsTokenWithoutSubscribeGrant() {
+        String token = tokenWithGrants(PLAYER_ID.toString(), ROOM,
+                Instant.now().plusSeconds(300).getEpochSecond(), true, true, false);
+        assertThrows(IllegalStateException.class, () -> HttpVoiceTokenProvider.validateTokenClaims(
+                token, PLAYER_ID, ROOM, Duration.ofMinutes(15)));
+    }
+
+    @Test
     void rejectsMalformedJwt() {
         assertThrows(IllegalStateException.class, () -> HttpVoiceTokenProvider.validateTokenClaims(
                 "not-a-jwt", PLAYER_ID, ROOM, Duration.ofMinutes(15)));
     }
 
     private static String token(String identity, String room, long expiresAt, boolean roomJoin) {
+        return tokenWithGrants(identity, room, expiresAt, roomJoin, true, true);
+    }
+
+    private static String tokenWithGrants(String identity, String room, long expiresAt,
+                                          boolean roomJoin, boolean canPublish, boolean canSubscribe) {
         JsonObject header = new JsonObject();
         header.addProperty("alg", "HS256");
         header.addProperty("typ", "JWT");
@@ -77,6 +98,10 @@ class HttpVoiceTokenProviderTest {
         JsonObject video = new JsonObject();
         video.addProperty("room", room);
         video.addProperty("roomJoin", roomJoin);
+        video.addProperty("canPublish", canPublish);
+        video.addProperty("canSubscribe", canSubscribe);
+        video.addProperty("canPublish", true);
+        video.addProperty("canSubscribe", true);
 
         JsonObject claims = new JsonObject();
         claims.addProperty("sub", identity);
