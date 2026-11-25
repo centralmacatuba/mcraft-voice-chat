@@ -1,5 +1,7 @@
 # Mcraft Voice Chat
 
+[Read in English](README.md).
+
 Plugin público para Paper, desenvolvido pela [Central Macatuba](https://github.com/centralmacatuba), que implementa o protocolo de mensagens `minecraft-web-client:voice-chat` e integra jogadores do Minecraft a uma sala LiveKit.
 
 O plugin foi projetado para ser reutilizado por servidores Minecraft independentes. Infraestrutura, credenciais, nomes de salas e políticas de moderação específicas de cada servidor devem ficar na configuração da instalação, não neste repositório.
