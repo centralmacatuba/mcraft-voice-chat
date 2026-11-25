@@ -67,7 +67,7 @@ The second string contains a JSON object. It is not raw JSON and must not use Ja
 
 The plugin never receives or exposes the LiveKit API secret. It calls a trusted HTTPS endpoint using a server-side Bearer credential.
 
-The backend must authenticate the server, validate the requested player and room, and mint a short-lived LiveKit JWT with the player's UUID as `sub`, the requested room as `video.room`, and a room-join grant.
+The backend must authenticate the server, validate the requested player and room, and mint a short-lived LiveKit JWT with the player's UUID as `sub`, the requested room as `video.room`, and `roomJoin`, `canPublish`, and `canSubscribe` grants enabled.
 
 The plugin inspects the JWT claims to reject mismatched identities, rooms, missing room-join grants, expired tokens, and tokens whose expiry exceeds the configured maximum. This is claim validation, not cryptographic signature verification; signature validation remains the responsibility of LiveKit and the trusted token backend.
 
