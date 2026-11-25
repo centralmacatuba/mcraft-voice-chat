@@ -5,5 +5,5 @@ import java.util.concurrent.CompletableFuture;
 
 public interface VoiceTokenProvider {
     CompletableFuture<VoiceCredentials> createSession(UUID playerUuid, String username,
-                                                        String serverId, String room);
+                                                        String serverId, String room, boolean forceMuted);
 }

@@ -1,20 +1,19 @@
 voice-chat:
   enabled: true
-
-  # The HTTPS endpoint must return { "url": "wss://...", "room": "...", "token": "..." }.
   token-provider:
     endpoint: ""
-    # The secret is read from this environment variable and is never stored in config.yml.
     bearer-token-env: "MCRAFT_VOICE_BACKEND_TOKEN"
     request-timeout-seconds: 10
-    # JWT exp must be in the future and no further away than this value.
     max-token-lifetime-seconds: 900
-
   session:
     server-id: "mcraft"
     room: "minecraft-survival"
     hearing-range: 32.0
     moderated: true
-
+  moderation:
+    # HTTPS endpoint that persists mute policy and updates LiveKit participants.
+    # Without it, moderation commands remain unavailable.
+    endpoint: ""
+    muted-players: []
   proximity:
     update-interval-ticks: 10
