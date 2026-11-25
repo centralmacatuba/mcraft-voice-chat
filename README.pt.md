@@ -2,7 +2,9 @@
 
 Plugin público e reutilizável para Paper, desenvolvido pela [Central Macatuba](https://github.com/centralmacatuba), que implementa o protocolo `minecraft-web-client:voice-chat` e conecta jogadores do Minecraft ao LiveKit.
 
-[Read in English](README.md).\n\nEste é um projeto independente, sem vínculo ou endosso da Prefeitura Municipal de Macatuba.
+[Read in English](README.md).
+
+Este é um projeto independente, sem vínculo ou endosso da Prefeitura Municipal de Macatuba.
 
 O plugin foi projetado para servidores Minecraft independentes. Infraestrutura, credenciais, nomes de salas e políticas de moderação específicas de cada servidor pertencem à instalação, não a este repositório.
 

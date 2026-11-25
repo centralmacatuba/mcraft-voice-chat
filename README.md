@@ -2,7 +2,9 @@
 
 A public, reusable Paper plugin by [Central Macatuba](https://github.com/centralmacatuba) that implements the `minecraft-web-client:voice-chat` plugin-message protocol and connects Minecraft players to LiveKit.
 
-[Leia em português brasileiro](README.pt.md).\n\nThis is an independent project and is not affiliated with or endorsed by the Prefeitura Municipal de Macatuba.
+[Leia em português brasileiro](README.pt.md).
+
+This is an independent project and is not affiliated with or endorsed by the Prefeitura Municipal de Macatuba.
 
 The plugin is intended for independent Minecraft servers. Server-specific infrastructure, credentials, room names, and moderation policies belong in each server installation, not in this repository.
 
