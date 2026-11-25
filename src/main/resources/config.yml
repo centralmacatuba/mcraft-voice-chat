@@ -7,6 +7,8 @@ voice-chat:
     # The secret is read from this environment variable and is never stored in config.yml.
     bearer-token-env: "MCRAFT_VOICE_BACKEND_TOKEN"
     request-timeout-seconds: 10
+    # JWT exp must be in the future and no further away than this value.
+    max-token-lifetime-seconds: 900
 
   session:
     server-id: "mcraft"
