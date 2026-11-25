@@ -170,7 +170,7 @@ Velocity e coordenação de múltiplos servidores backend não fazem parte do es
 - [ ] Calcular jogadores próximos que participam do voice chat no mesmo mundo.
 - [ ] Enviar `nearby` somente quando o payload mudar.
 - [ ] Permitir configurar o alcance de audição e o intervalo de atualização.
-- [ ] Adicionar estado de mudo controlado pelo servidor e integração com permissões.
+- [ ] Adicionar estado de mudo forçado controlado pelo servidor e integração com permissões; avaliar separadamente a revogação de publicação diretamente no LiveKit.
 - [ ] Limpar o estado em mudanças de mundo, desconexões e encerramento do plugin.
 
 ### Fase 4 — Verificação e publicação
