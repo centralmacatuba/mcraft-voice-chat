@@ -2,6 +2,8 @@
 
 A public Paper plugin by [Central Macatuba](https://github.com/centralmacatuba) that implements the `minecraft-web-client:voice-chat` plugin-message protocol and integrates Minecraft players with a LiveKit room.
 
+[Leia em português brasileiro](README.pt.md).
+
 The plugin is designed to be reusable by independent Minecraft servers. Server-specific infrastructure, credentials, room names, and moderation policies belong in each server's configuration, not in this repository.
 
 > **Project status:** Planning and initial implementation. The protocol framing has been checked against the current `minecraft-web-client` client source. End-to-end compatibility with a live Minecraft Web Client and a LiveKit deployment is not yet verified.
@@ -189,4 +191,4 @@ The resulting plugin JAR is placed in `build/libs/`.
 
 ## License
 
-The project license will be selected and added before the first public release.
+This project is licensed under the MIT License. See [LICENSE](LICENSE).
