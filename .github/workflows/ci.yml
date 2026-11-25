@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - principal
+      - "feat/**"
   pull_request:
     branches:
       - principal
@@ -21,21 +22,24 @@ jobs:
     name: Build and test (Java 21)
     runs-on: ubuntu-latest
     timeout-minutes: 25
-
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
       - name: Set up Java
         uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           gradle-version: "9.9.2"
-
       - name: Run tests and build plugin
-        run: gradle --no-daemon clean build
+        run: gradle --no-daemon --warning-mode all clean test build
+      - name: Upload plugin JAR
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mcraft-voice-chat-${{ github.sha }}
+          path: build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 14

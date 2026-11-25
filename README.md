@@ -1,133 +1,123 @@
 # Mcraft Voice Chat
 
-A public Paper plugin by [Central Macatuba](https://github.com/centralmacatuba) that implements the `minecraft-web-client:voice-chat` plugin-message protocol and integrates Minecraft players with a LiveKit room.
+A public, reusable Paper plugin by [Central Macatuba](https://github.com/centralmacatuba) that implements the `minecraft-web-client:voice-chat` plugin-message protocol and connects Minecraft players to LiveKit.
 
 [Leia em português brasileiro](README.pt.md).
 
-The plugin is designed to be reusable by independent Minecraft servers. Server-specific infrastructure, credentials, room names, and moderation policies belong in each server's configuration, not in this repository.
+The plugin is intended for independent Minecraft servers. Server-specific infrastructure, credentials, room names, and moderation policies belong in each server installation, not in this repository.
 
-> **Project status:** Initial Paper implementation. Protocol framing and message handling are implemented; token claims are checked and basic moderation commands are available. End-to-end compatibility with a live Minecraft Web Client and LiveKit deployment still requires integration testing.
-
-## Features
-
-- Implements `minecraft-web-client:voice-chat` without modifying the client.
-- Paper-first architecture with a clean separation between protocol, token provider, player state, and proximity calculation.
-- LiveKit audio travels directly over WebRTC; Minecraft plugin messages carry control/configuration data only.
-- Per-player short-lived token provisioning through an authenticated HTTPS backend.
-- JWT claim checks for participant UUID, room, room-join grant, and expiration.
-- Server-calculated proximity list, configurable hearing range, and changed-payload suppression.
-- `/mcraftvoice status`, `mute <player>`, and `unmute <player>` commands.
-- Secrets are read from an environment variable and are not stored in the repository.
+> **Project status:** Initial Paper implementation with token provisioning, proximity updates, and an HTTP moderation integration contract. Live compatibility with the upstream client and a real LiveKit deployment still requires end-to-end testing.
 
 ## Architecture
 
 ```text
 Minecraft Web Client
-  |  minecraft-web-client:voice-chat (control/configuration only)
+  | minecraft-web-client:voice-chat (control/configuration only)
   v
 Paper server + Mcraft Voice Chat
-  |  authenticated HTTPS request for a short-lived participant token
+  | HTTPS token and moderation requests
   v
-Voice token backend
-  |
-  +---- LiveKit credentials / participant grants
+Trusted voice backend
+  | LiveKit server SDK / administrative API
+  v
+LiveKit room
 
 Minecraft Web Client <====== WebRTC audio ======> LiveKit
 ```
 
-The client handles microphone capture, LiveKit WebRTC connectivity, subscriptions, 3D positioning, and spatial attenuation. The plugin handles protocol messages, token provisioning, server-side player state, proximity lists, and moderation state.
+Audio travels directly over WebRTC between the client and LiveKit. Minecraft plugin messages carry control/configuration data only.
+
+## Implemented features
+
+- Paper plugin for the existing `minecraft-web-client:voice-chat` channel.
+- Protocol framing with two Minecraft `pstring` values: action and JSON payload.
+- Per-player short-lived LiveKit token provisioning through an authenticated HTTPS backend.
+- JWT claim checks for algorithm, participant UUID, room, grants, and expiry.
+- Force-muted participants receive tokens without the LiveKit publish grant when the backend honors the contract.
+- Server-side mute/unmute requests through a separate authenticated moderation endpoint.
+- Persisted mute UUIDs, restored after reconnects and server restarts.
+- Same-world proximity calculation and changed-payload suppression.
+- `/mcraftvoice status`, `mute <player>`, and `unmute <player>`.
+- CI build/test workflow, artifact upload, Dependabot, and tag-based GitHub releases.
 
 ## Client protocol
 
-Channel: `minecraft-web-client:voice-chat`
+Channel: `minecraft-web-client:voice-chat`.
 
-Each plugin message contains two Minecraft protocol strings:
+Each message contains two protocol strings:
+1. `action`: UTF-8 `pstring` with a signed `i16` length prefix;
+2. `json`: UTF-8 `pstring` with a signed `i16` length prefix.
 
-1. `action`: `pstring` with a signed `i16` length prefix;
-2. `json`: `pstring` with a signed `i16` length prefix.
+The JSON value is an object. It is not raw JSON and must not use Java's modified-UTF `DataOutputStream.writeUTF` encoding.
 
-The second string contains a JSON object. It is not raw JSON and must not use Java's modified-UTF `DataOutputStream.writeUTF` encoding.
+Client → server: `enable`, `disable`.
+Server → client: `available`, `config`, `nearby`.
 
-### Client → server
+## Backend integration
 
-| Action | Payload | Meaning |
-| --- | --- | --- |
-| `enable` | `{}` | Player opts into voice chat. |
-| `disable` | `{}` | Player leaves voice chat. |
+The backend is a separate service and is not included in this repository. The plugin never receives the LiveKit API secret.
 
-### Server → client
+See [Backend contract (English)](docs/backend-contract.md) and [Contrato do backend (Português)](docs/backend-contract.pt-BR.md).
 
-| Action | Payload | Meaning |
-| --- | --- | --- |
-| `available` | `{}` | Server supports voice chat. |
-| `config` | `VoiceConfig` | LiveKit connection details for this player. |
-| `nearby` | `NearbyPayload` | Nearby participants and forced-muted identities. |
+The token endpoint must issue an HS256 LiveKit JWT with the exact player UUID in `sub`, the requested room in `video.room`, `roomJoin=true`, `canSubscribe=true`, and a short expiry. It must set `canPublish=false` for a force-muted player.
 
-## Token backend
+The moderation endpoint must persist mute state and enforce it against connected LiveKit participants. A 2xx response means the backend has accepted and durably stored the policy. A client-side `forceMuted` hint is not server-side enforcement.
 
-The plugin never receives or exposes the LiveKit API secret. It calls a trusted HTTPS endpoint using a server-side Bearer credential.
-
-The backend must authenticate the server, validate the requested player and room, and mint a short-lived LiveKit JWT with the player's UUID as `sub`, the requested room as `video.room`, and `roomJoin`, `canPublish`, and `canSubscribe` grants enabled.
-
-The plugin inspects the JWT claims to reject mismatched identities, rooms, missing room-join grants, expired tokens, and tokens whose expiry exceeds the configured maximum. This is claim validation, not cryptographic signature verification; signature validation remains the responsibility of LiveKit and the trusted token backend.
+The plugin validates JWT claims but does not cryptographically verify the signature. Signing and signature trust remain with the backend and LiveKit.
 
 ## Configuration
 
-The main configuration is `plugins/McraftVoiceChat/config.yml`:
+Set `MCRAFT_VOICE_BACKEND_TOKEN` in the Paper server process environment. Do not place the secret in `config.yml` or source control.
 
 ```yaml
 voice-chat:
   enabled: true
   token-provider:
-    endpoint: "https://your-backend.example/voice/token"
+    endpoint: "https://backend.example/voice/token"
     bearer-token-env: "MCRAFT_VOICE_BACKEND_TOKEN"
     request-timeout-seconds: 10
     max-token-lifetime-seconds: 900
   session:
-    server-id: "mcraft"
+    server-id: "my-server"
     room: "minecraft-survival"
     hearing-range: 32.0
     moderated: true
+  moderation:
+    endpoint: "https://backend.example/voice/moderation"
+    muted-players: []
   proximity:
     update-interval-ticks: 10
 ```
 
-Set `MCRAFT_VOICE_BACKEND_TOKEN` in the server process environment. Do not put the secret in `config.yml` or source control.
+Both backend endpoints must use HTTPS. The LiveKit URL returned to clients must use `wss://`; `ws://` is accepted only for loopback development.
 
-The LiveKit URL must use `wss://`. Plain `ws://` is accepted only for loopback development endpoints.
+If the moderation endpoint is not configured, moderation commands remain unavailable. This is intentional: a client-side `forceMuted` hint is not an enforcement boundary.
 
 ## Commands and permissions
 
-- `/mcraftvoice status` — shows the number of players with an active voice session.
-- `/mcraftvoice mute <player>` — adds the player identity to the forced-mute list sent to nearby clients.
-- `/mcraftvoice unmute <player>` — removes the player from that list.
+- `/mcraftvoice status` — active voice sessions and moderation backend status.
+- `/mcraftvoice mute <player>` — persist and enforce a participant mute through the backend.
+- `/mcraftvoice unmute <player>` — remove the backend mute policy.
 - Alias: `/mcvoice`.
 
-Permissions:
+Permissions: `mcraftvoice.use` (default everyone) and `mcraftvoice.moderate` (default operators).
 
-- `mcraftvoice.use` — join voice chat (default: everyone).
-- `mcraftvoice.moderate` — run moderation commands (default: operators).
+## Requirements and build
 
-**Moderation limitation:** `mute` controls playback of that participant on compatible clients through the protocol's `forceMuted` field. It does not revoke the participant's LiveKit microphone-publishing grant. Enforcing publish mute at the media server requires an additional LiveKit administrative integration in the trusted backend.
-
-## Requirements
-
-- Paper API 1.21.11.
-- Java 21.
-- A Minecraft Web Client build containing `minecraft-web-client:voice-chat`.
-- A token backend that implements the documented contract.
+- Paper API 1.21.11; Java 21; Gradle 9.9.2 or compatible Gradle 9.x.
+- A compatible Minecraft Web Client build.
+- A trusted backend implementing the documented token and moderation contracts.
 - LiveKit Cloud or a reachable self-hosted LiveKit deployment.
 
-Velocity support and multi-backend network coordination are outside the initial scope.
-
-## Build
-
 ```bash
-gradle test
-gradle build
+gradle --no-daemon clean test build
 ```
 
-The plugin JAR is generated in `build/libs/`.
+The plugin JAR is generated in `build/libs/`. CI uploads it as a workflow artifact; pushing a `v*` tag builds and publishes a GitHub Release. Velocity support and multi-server coordination are outside the initial scope.
+
+## Contributing and security
+
+See [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and [SECURITY.md](SECURITY.md). Never publish LiveKit secrets, backend credentials, JWTs, player data, or production logs.
 
 ## License
 
