@@ -23,6 +23,14 @@ Thanks for helping improve Mcraft Voice Chat!
 
 The plugin JAR is written to `build/libs/`.
 
+Gradle dependency verification is enabled through `gradle/verification-metadata.xml`. When intentionally adding or upgrading dependencies, regenerate and review the SHA-256 verification metadata with:
+
+```bash
+./gradlew --write-verification-metadata sha256 clean test build
+```
+
+Commit the updated verification metadata together with the dependency change. Do not disable verification to make an unknown dependency pass.
+
 ## Commit messages and releases
 
 The project uses [Conventional Commits](https://www.conventionalcommits.org/) with Release Please to prepare version and changelog pull requests.
