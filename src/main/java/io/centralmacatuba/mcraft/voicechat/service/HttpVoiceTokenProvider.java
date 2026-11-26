@@ -2,7 +2,6 @@ package io.centralmacatuba.mcraft.voicechat.service;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
