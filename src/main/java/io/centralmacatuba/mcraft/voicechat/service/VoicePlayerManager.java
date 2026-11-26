@@ -189,9 +189,8 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
     public void enforceCurrentPermissions() {
         for (Player player : new ArrayList<>(activePlayers.values())) {
             if (!player.isOnline() || !player.hasPermission("mcraftvoice.use")) {
-                if (player.isOnline()) {
-                    send(player, "disable", new JsonObject());
-                }
+                // The current upstream protocol has no server-to-client disable action.
+                // Drop the server-side session and prevent stale token responses from restoring it.
                 disable(player.getUniqueId());
             }
         }
