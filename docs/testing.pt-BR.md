@@ -2,7 +2,7 @@
 
 ## Testes automatizados do ciclo de vida Paper
 
-A suíte Gradle inclui testes de integração com MockBukkit. Eles iniciam um servidor Paper simulado, carregam o plugin real a partir do descritor e dos recursos, verificam que o plugin permanece ativo quando a configuração opcional do backend está ausente e executam `/mcraftvoice status` e o alias `/mcvoice`. Esses testes são executados na CI por `./gradlew test`.
+A suíte Gradle inclui testes de integração com MockBukkit. Eles iniciam um servidor Paper simulado, carregam o plugin real a partir do descritor e dos recursos, verificam que o plugin permanece ativo quando a configuração opcional do backend está ausente e executam `/mcraftvoice status` e o apelido `/mcvoice`. Esses testes são executados na CI por `./gradlew test`.
 
 MockBukkit não é um servidor Paper real e não implementa o Minecraft Web Client, um backend de tokens de produção nem LiveKit/WebRTC. A aprovação desses testes comprova somente o ciclo de vida e o registro de comandos cobertos. Use o plano ponta a ponta abaixo para validar interoperabilidade real.
 
@@ -46,7 +46,7 @@ Esta lista descreve testes que exigem um servidor Paper real, uma versão compat
 - Confirme que um token solicitado após o mute contém `video.canPublish=false`.
 - Remova o mute e confirme que o backend restaura a permissão de publicação pretendida.
 - Silencie um jogador offline cuja identidade esteja no cache do Paper (o jogador precisa ter entrado ao menos uma vez); reinicie o Paper e confirme que a política persistida é aplicada quando ele reconectar.
-- Envie mute e depois unmute (e também unmute e depois mute) rapidamente para o mesmo UUID; confirme que o backend processa as solicitações na ordem de envio e que o espelho local reflete somente operações confirmadas.
+- Envie mute e depois unmute (e também unmute e depois mute) rapidamente para o mesmo UUID. Simule timeout no cliente com a requisição antiga ainda em processamento e confirme que o backend rejeita revisões antigas, preserva a última mutação aceita e permite reconciliação do estado. A fila local, sozinha, não garante a ordem de execução remota; consulte a issue #4.
 - Envie solicitações para dois UUIDs diferentes; confirme que elas não são serializadas desnecessariamente entre si.
 - Altere o estado de mute enquanto a emissão de token estiver pendente; o plugin deve descartar credenciais com permissões antigas e solicitar um novo token.
 - Faça o endpoint retornar status diferente de 2xx ou expirar; o plugin não deve alterar o estado local nem informar sucesso.
