@@ -22,6 +22,7 @@ dependencies {
     // Paper provides Gson at runtime; compileOnly avoids bundling a conflicting copy in the plugin JAR.
     compileOnly("com.google.code.gson:gson:2.13.2")
 
+    testImplementation("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
     testImplementation("com.google.code.gson:gson:2.13.2")
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
     testImplementation("org.mockbukkit.mockbukkit:mockbukkit-v1.21:4.116.3")
