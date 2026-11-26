@@ -10,6 +10,8 @@ The format is based on Keep a Changelog and the project follows Semantic Version
 - Manual end-to-end integration test plans in English and Brazilian Portuguese.
 - Gradle 9.9.2 Wrapper with pinned distribution checksum and CI verification.
 - Backend-enforced mute integration contract and HTTP moderation provider.
+- Revisioned, idempotent moderation mutations with durable local revision counters and backend compare-and-set requirements.
+- Bounded token response subscriber with total-deadline cancellation for stalled HTTP bodies.
 - Persistent local mute policy, restored across player reconnects and server restarts.
 - CI build artifacts and tag-based GitHub releases.
 - Contribution guidelines, code of conduct, and backend contract documentation.
