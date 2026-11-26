@@ -76,6 +76,8 @@ O backend deve:
 
 Uma indicação `forceMuted` enviada ao cliente não é aplicação efetiva. A permissão do participante no LiveKit é a fronteira de aplicação. Se o participante estiver offline, persista a política e garanta que o próximo token seja emitido sem permissão de publicação.
 
+Atualmente, o plugin invalida o estado local de sessão ativa/pendente quando `mcraftvoice.use` é revogada, mas o protocolo upstream não possui uma ação `disable` do servidor para o cliente e este repositório ainda não chama uma operação do backend para remover o participante/controlar sua admissão nesse evento. Portanto, um participante já conectado ao LiveKit pode continuar conectado até que o cliente se desconecte ou a sessão termine. Não considere a revalidação local da permissão como revogação remota imediata.
+
 ## Operação
 
 Use uma credencial de backend por servidor Paper, mantenha as credenciais da API LiveKit somente no armazenamento seguro do backend, restrinja os privilégios administrativos às salas necessárias e teste emissão de tokens, mute, unmute, reconexão e reinicialização em uma sala não produtiva.
