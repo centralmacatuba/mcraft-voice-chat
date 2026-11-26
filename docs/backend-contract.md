@@ -72,7 +72,7 @@ The plugin also sends `Idempotency-Key: <operationId>`. The revision is allocate
 
 Return a 2xx status only after the mute policy is durably stored and the LiveKit operation is accepted. Return `409 Conflict` for a stale revision (or an operation-ID/revision reuse with a different payload); other non-2xx responses indicate that the mutation was not confirmed. The plugin leaves its local mute mirror unchanged on every non-2xx response.
 
-The backend must implement an atomic compare-and-set per `(authenticatedServerId, room, playerUuid)`:
+The backend must first look up an existing `operationId` in its idempotency record and return its stored result for an identical payload. Only a previously unseen operation proceeds to the revision comparison. It must implement an atomic compare-and-set per `(authenticatedServerId, room, playerUuid)`:
 1. validate that the authenticated server may manage the supplied server ID and room;
 2. persist the policy by server, room, and participant UUID together with the highest accepted revision and operation ID;
 3. accept a mutation only when its revision is strictly greater than the stored revision, then atomically persist the revision, operation ID, and desired mute state before applying LiveKit effects;
