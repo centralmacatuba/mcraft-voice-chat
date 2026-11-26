@@ -39,7 +39,7 @@ O áudio trafega diretamente por WebRTC entre o cliente e o LiveKit. As mensagen
 - Solicitações de mute/unmute no servidor por endpoint de moderação separado e autenticado.
 - UUIDs silenciados persistidos e restaurados após reconexões e reinicializações.
 - Moderação offline para identidades já presentes no cache de jogadores offline do servidor.
-- Fila local que serializa solicitações de moderação por jogador. A ordenação efetiva no backend após timeouts exige controle de sequência no próprio backend (consulte a issue #4).
+- Fila local que serializa solicitações de moderação por jogador, com revisões monotônicas persistidas, IDs de operação e chaves de idempotência. O backend externo precisa aplicar compare-and-set atômico e rejeitar revisões obsoletas para garantir a ordenação remota (consulte a issue #4).
 - Cálculo de proximidade no mesmo mundo e supressão de payloads inalterados.
 - Avisos de pacotes malformados com limite de frequência e leitura limitada das respostas do endpoint de tokens.
 - Comandos `/mcraftvoice status`, `mute <jogador>` e `unmute <jogador>`.
