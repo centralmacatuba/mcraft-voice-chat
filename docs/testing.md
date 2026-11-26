@@ -56,7 +56,7 @@ This checklist describes tests that require a real Paper server, a compatible Mi
 - Reject token responses with malformed JSON, an unexpected room, an unexpected UUID, an unsupported JWT algorithm, missing grants, expired tokens, or excessive lifetime.
 - Reject tokens missing `nbf`, with fractional/non-integer `exp` or `nbf`, with `exp <= nbf`, with a total `exp - nbf` lifetime above the configured maximum, or with `nbf` more than 60 seconds in the future.
 - Reject token backend bodies larger than 64 KiB without parsing or retaining the full response.
-- Reject LiveKit URLs that are not WSS, except loopback WS during local development.
+- Reject all `ws://` URLs by default; verify loopback `ws://` works only when `allow-insecure-loopback: true`, and remote `ws://` remains rejected even with that option enabled.
 - Verify that backend redirects are not followed.
 - Send malformed plugin messages repeatedly; verify warning logs are rate-limited per player.
 - Send unknown actions containing control characters; verify they are sanitized before logging.
