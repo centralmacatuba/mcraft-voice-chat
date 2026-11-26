@@ -83,11 +83,20 @@ public final class VoiceChatCommand implements CommandExecutor, TabCompleter {
             UUID targetId = target.getUniqueId();
             String targetName = target.getName() == null ? args[1] : target.getName();
             boolean mute = args[0].equalsIgnoreCase("mute");
+            final long revision;
+            try {
+                revision = playerManager.allocateModerationRevision(targetId);
+            } catch (RuntimeException exception) {
+                sender.sendMessage(Component.text(
+                        "Não foi possível reservar uma revisão segura para a moderação.", NamedTextColor.RED));
+                return true;
+            }
+            UUID operationId = UUID.randomUUID();
             sender.sendMessage(Component.text("Solicitando " + (mute ? "mute" : "unmute")
-                    + " ao backend para " + targetName + "...", NamedTextColor.YELLOW));
+                    + " ao backend para " + targetName + " (revisão " + revision + ")...", NamedTextColor.YELLOW));
 
             moderationQueue.submit(targetId, () -> plugin.getModerationProvider().setMuted(
-                            targetId, plugin.getServerId(), plugin.getRoomName(), mute))
+                            targetId, plugin.getServerId(), plugin.getRoomName(), mute, revision, operationId))
                     .whenComplete((ignored, error) -> {
                         if (!plugin.isEnabled()) return;
                         try {
