@@ -1,3 +1,11 @@
+# Automated and manual integration test plan
+
+## Automated Paper lifecycle integration tests
+
+The Gradle test suite includes MockBukkit-based integration tests. They boot a simulated Paper server, load the actual plugin from its descriptor/resources, verify that the plugin remains enabled when optional backend configuration is absent, and dispatch both `/mcraftvoice status` and its `/mcvoice` alias. These tests run in CI with `./gradlew test`.
+
+MockBukkit is not a real Paper server and does not implement the Minecraft Web Client, a production token backend, or LiveKit/WebRTC. Passing these tests proves only the tested plugin lifecycle and command-registration behavior. Use the manual end-to-end plan below for interoperability validation.
+
 # Manual integration test plan
 
 This checklist describes tests that require a real Paper server, a compatible Minecraft Web Client build, the trusted backend, and a non-production LiveKit room. Passing unit tests does not establish end-to-end compatibility.

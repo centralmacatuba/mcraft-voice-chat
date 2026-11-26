@@ -1,3 +1,11 @@
+# Testes automatizados e plano manual de integração
+
+## Testes automatizados do ciclo de vida Paper
+
+A suíte Gradle inclui testes de integração com MockBukkit. Eles iniciam um servidor Paper simulado, carregam o plugin real a partir do descritor e dos recursos, verificam que o plugin permanece ativo quando a configuração opcional do backend está ausente e executam `/mcraftvoice status` e o alias `/mcvoice`. Esses testes são executados na CI por `./gradlew test`.
+
+MockBukkit não é um servidor Paper real e não implementa o Minecraft Web Client, um backend de tokens de produção nem LiveKit/WebRTC. A aprovação desses testes comprova somente o ciclo de vida e o registro de comandos cobertos. Use o plano ponta a ponta abaixo para validar interoperabilidade real.
+
 # Plano de testes manuais de integração
 
 Esta lista descreve testes que exigem um servidor Paper real, uma versão compatível do Minecraft Web Client, o backend confiável e uma sala LiveKit não produtiva. Testes unitários aprovados não comprovam compatibilidade ponta a ponta.

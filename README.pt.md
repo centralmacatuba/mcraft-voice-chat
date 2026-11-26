@@ -116,7 +116,7 @@ Requisitos: Paper API 1.21.11, Java 21 e Gradle Wrapper 9.9.2 incluído.
 ./gradlew --no-daemon clean test build
 ```
 
-O JAR é gerado em `build/libs/`. A CI valida metadados YAML/JSON, executa os testes, compila o plugin e disponibiliza o JAR como artefato do workflow.
+O JAR é gerado em `build/libs/`. A CI valida metadados YAML/JSON, executa testes unitários e testes de integração do ciclo de vida em servidor Paper simulado pelo MockBukkit, compila o plugin e disponibiliza o JAR como artefato do workflow. O MockBukkit verifica o ciclo de vida e o registro de comandos em um servidor simulado; ele não substitui os testes ponta a ponta com Minecraft Web Client, backend e LiveKit reais.
 
 As releases usam [Conventional Commits](https://www.conventionalcommits.org/) e [Release Please](https://github.com/googleapis/release-please). Em pushes para `principal`, o Release Please cria ou atualiza um pull request com a versão e o changelog. Ao mesclar esse PR, é criada a tag `vX.Y.Z` e a GitHub Release; o workflow acionado pela tag executa testes/build e anexa o JAR à release existente. Configure o segredo de repositório `RELEASE_PLEASE_TOKEN`, conforme descrito em [CONTRIBUTING.md](CONTRIBUTING.md). O manifesto atualmente considera `0.1.0` como versão-base ainda não publicada.
 
