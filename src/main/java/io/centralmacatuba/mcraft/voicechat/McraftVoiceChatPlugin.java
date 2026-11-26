@@ -56,8 +56,11 @@ public class McraftVoiceChatPlugin extends JavaPlugin {
             return;
         }
         try {
+            boolean allowInsecureLoopback = getConfig().getBoolean(
+                    "voice-chat.token-provider.allow-insecure-loopback", false);
             tokenProvider = new HttpVoiceTokenProvider(URI.create(endpoint), backendToken,
-                    Duration.ofSeconds(timeoutSeconds), Duration.ofSeconds(maxTokenLifetimeSeconds));
+                    Duration.ofSeconds(timeoutSeconds), Duration.ofSeconds(maxTokenLifetimeSeconds),
+                    allowInsecureLoopback);
         } catch (IllegalArgumentException exception) {
             getLogger().severe("Invalid voice token-provider configuration; verify the HTTPS endpoint and timeout settings.");
             getServer().getPluginManager().disablePlugin(this);
