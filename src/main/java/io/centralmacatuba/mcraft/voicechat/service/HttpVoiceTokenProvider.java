@@ -3,7 +3,6 @@ package io.centralmacatuba.mcraft.voicechat.service;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -84,38 +83,33 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
                 .header("Cache-Control", "no-store")
                 .POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
 
-        return client.sendAsync(request, HttpResponse.BodyHandlers.ofInputStream())
-                .thenApply(response -> {
-                    try (InputStream responseStream = response.body()) {
-                        if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                            throw new CompletionException(new IllegalStateException(
-                                    "Token backend returned HTTP " + response.statusCode()));
-                        }
-                        byte[] responseBytes = responseStream.readNBytes(MAX_RESPONSE_BYTES + 1);
-                        if (responseBytes.length > MAX_RESPONSE_BYTES) {
-                            throw new CompletionException(new IllegalStateException(
-                                    "Token backend response exceeded the 64 KiB limit."));
-                        }
-                        JsonObject json = JsonParser.parseString(
-                                new String(responseBytes, StandardCharsets.UTF_8)).getAsJsonObject();
-                        String url = requiredString(json, "url");
-                        String responseRoom = requiredString(json, "room");
-                        String token = requiredString(json, "token");
-                        if (!room.equals(responseRoom)) {
-                            throw new IllegalStateException("Token backend returned an unexpected room.");
-                        }
-                        validateLiveKitUrl(url, allowInsecureLoopback);
-                        validateTokenClaims(token, playerUuid, room, maxTokenLifetime, forceMuted);
-                        return new VoiceCredentials(url, responseRoom, token);
-                    } catch (IOException exception) {
-                        throw new CompletionException(new IllegalStateException(
-                                "Could not read token backend response."));
-                    } catch (RuntimeException exception) {
-                        if (exception instanceof CompletionException completionException) throw completionException;
-                        throw new CompletionException(new IllegalStateException(
-                                "Token backend returned an invalid response."));
-                    }
-                });
+        BoundedHttpBodySubscriber subscriber = new BoundedHttpBodySubscriber(MAX_RESPONSE_BYTES, requestTimeout);
+        CompletableFuture<HttpResponse<byte[]>> exchange =
+                client.sendAsync(request, ignored -> subscriber);
+        subscriber.bindExchange(exchange);
+        return exchange.thenApply(response -> {
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new CompletionException(new IllegalStateException(
+                        "Token backend returned HTTP " + response.statusCode()));
+            }
+            try {
+                JsonObject json = JsonParser.parseString(
+                        new String(response.body(), StandardCharsets.UTF_8)).getAsJsonObject();
+                String url = requiredString(json, "url");
+                String responseRoom = requiredString(json, "room");
+                String token = requiredString(json, "token");
+                if (!room.equals(responseRoom)) {
+                    throw new IllegalStateException("Token backend returned an unexpected room.");
+                }
+                validateLiveKitUrl(url, allowInsecureLoopback);
+                validateTokenClaims(token, playerUuid, room, maxTokenLifetime, forceMuted);
+                return new VoiceCredentials(url, responseRoom, token);
+            } catch (RuntimeException exception) {
+                if (exception instanceof CompletionException completionException) throw completionException;
+                throw new CompletionException(new IllegalStateException(
+                        "Token backend returned an invalid response."));
+            }
+        });
     }
 
     static void validateLiveKitUrl(String value) {
