@@ -21,18 +21,6 @@ repositories {
 }
 
 dependencies {
-    constraints {
-        // Paper 1.21.11 currently resolves an older Guava transitively. Keep the
-        // compile/test graph on the first fixed release for CVE-2026-102554.
-        compileOnly("com.google.guava:guava:33.7.2-jre") {
-            version { require("33.7.2-jre") }
-            because("Fixes CVE-2026-102554 in Paper API's transitive dependency graph.")
-        }
-        testImplementation("com.google.guava:guava:33.7.2-jre") {
-            version { require("33.7.2-jre") }
-            because("Keep MockBukkit and Paper test runtime on the fixed Guava release.")
-        }
-    }
 
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
     // Paper provides Gson at runtime; compileOnly avoids bundling a conflicting copy in the plugin JAR.
