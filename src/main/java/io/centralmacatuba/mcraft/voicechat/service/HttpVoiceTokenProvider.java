@@ -38,8 +38,7 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
     public HttpVoiceTokenProvider(URI endpoint, String bearerToken, Duration requestTimeout,
                                   Duration maxTokenLifetime, boolean allowInsecureLoopback) {
         this(endpoint, bearerToken, requestTimeout, maxTokenLifetime, allowInsecureLoopback,
-                HttpClient.newBuilder().connectTimeout(requestTimeout)
-                        .followRedirects(HttpClient.Redirect.NEVER).build());
+                createHttpClient(requestTimeout));
     }
 
     HttpVoiceTokenProvider(URI endpoint, String bearerToken, Duration requestTimeout,
@@ -61,6 +60,12 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
         this.maxTokenLifetime = maxTokenLifetime;
         this.allowInsecureLoopback = allowInsecureLoopback;
         this.client = Objects.requireNonNull(client, "client");
+    }
+
+    private static HttpClient createHttpClient(Duration timeout) {
+        HttpClient.Builder builder = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER);
+        if (timeout != null && !timeout.isZero() && !timeout.isNegative()) builder.connectTimeout(timeout);
+        return builder.build();
     }
 
     @Override
