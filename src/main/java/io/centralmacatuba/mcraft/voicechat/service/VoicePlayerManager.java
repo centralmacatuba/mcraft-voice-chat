@@ -159,6 +159,9 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
         }
         Player onlinePlayer = Bukkit.getPlayer(playerId);
         if (onlinePlayer == null || !onlinePlayer.isOnline()) return;
+        // Permission may have been revoked while the asynchronous token request was pending.
+        // Re-check on the server thread immediately before activating the session or sending its token.
+        if (!onlinePlayer.hasPermission("mcraftvoice.use")) return;
         failedRequestCooldowns.remove(playerId);
         activePlayers.put(playerId, onlinePlayer);
         lastNearbyPayloads.remove(playerId);
