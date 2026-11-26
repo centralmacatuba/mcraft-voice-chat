@@ -55,6 +55,18 @@ class HttpVoiceTokenProviderTransportTest {
     }
 
     @Test
+    void cancelsAStalledBodyAtTheTotalDeadlineAndNeverReturnsCredentials() {
+        StubHttpClient client = new StubHttpClient(200, null, true);
+        HttpVoiceTokenProvider provider = new HttpVoiceTokenProvider(
+                URI.create("https://backend.example/token"), "backend-secret",
+                Duration.ofMillis(75), Duration.ofMinutes(10), false, client);
+
+        assertThrows(CompletionException.class,
+                () -> provider.createSession(PLAYER, "Player", "server", ROOM, false).join());
+        assertTrue(client.bodyCancelled(), "the stalled response subscription must be cancelled");
+    }
+
+    @Test
     void rejectsUnexpectedRoomAndOversizedResponse() {
         StubHttpClient wrongRoom = response(200, tokenResponse().replace(ROOM, "other-room"));
         assertThrows(CompletionException.class,
