@@ -1,6 +1,6 @@
 # Mcraft Voice Chat
 
-A public, reusable Paper plugin by [Central Macatuba](https://github.com/centralmacatuba) that implements the `minecraft-web-client:voice-chat` plugin-message protocol and connects Minecraft players to LiveKit.
+A public, reusable Paper plugin developed by **Desenvolvedor EE (DevEE)** as part of the independent [Central Macatuba](https://github.com/centralmacatuba) project. It implements the `minecraft-web-client:voice-chat` plugin-message protocol and connects Minecraft players to LiveKit.
 
 [Leia em português brasileiro](README.pt.md).
 
