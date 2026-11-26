@@ -15,6 +15,7 @@ import org.bukkit.event.player.PlayerRegisterChannelEvent;
 import org.bukkit.event.player.PlayerUnregisterChannelEvent;
 import org.bukkit.plugin.IllegalPluginAccessException;
 import org.bukkit.plugin.messaging.PluginMessageListener;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -236,7 +237,15 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
         }
         long next = current + 1L;
         plugin.getConfig().set(path, next);
-        plugin.saveConfig();
+        try {
+            // saveConfig() logs and suppresses IOExceptions; use Configuration.save so a failed
+            // durable write prevents dispatch rather than risking revision reuse after a restart.
+            plugin.getConfig().save(new File(plugin.getDataFolder(), "config.yml"));
+        } catch (IOException exception) {
+            plugin.getLogger().log(Level.SEVERE,
+                    "Could not persist moderation revision; refusing to dispatch the mutation.", exception);
+            throw new IllegalStateException("Could not persist moderation revision.", exception);
+        }
         return next;
     }
 
