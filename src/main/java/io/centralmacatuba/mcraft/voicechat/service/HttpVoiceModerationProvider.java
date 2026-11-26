@@ -19,8 +19,7 @@ public final class HttpVoiceModerationProvider implements VoiceModerationProvide
     private final Duration requestTimeout;
 
     public HttpVoiceModerationProvider(URI endpoint, String bearerToken, Duration requestTimeout) {
-        this(endpoint, bearerToken, requestTimeout, HttpClient.newBuilder().connectTimeout(requestTimeout)
-                .followRedirects(HttpClient.Redirect.NEVER).build());
+        this(endpoint, bearerToken, requestTimeout, createHttpClient(requestTimeout));
     }
 
     HttpVoiceModerationProvider(URI endpoint, String bearerToken, Duration requestTimeout, HttpClient client) {
@@ -38,6 +37,12 @@ public final class HttpVoiceModerationProvider implements VoiceModerationProvide
         this.bearerToken = bearerToken;
         this.requestTimeout = requestTimeout;
         this.client = Objects.requireNonNull(client, "client");
+    }
+
+    private static HttpClient createHttpClient(Duration timeout) {
+        HttpClient.Builder builder = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER);
+        if (timeout != null && !timeout.isZero() && !timeout.isNegative()) builder.connectTimeout(timeout);
+        return builder.build();
     }
 
     @Override
