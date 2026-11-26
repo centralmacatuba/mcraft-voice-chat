@@ -54,6 +54,7 @@ This checklist describes tests that require a real Paper server, a compatible Mi
 ## Invalid responses and security
 
 - Reject token responses with malformed JSON, an unexpected room, an unexpected UUID, an unsupported JWT algorithm, missing grants, expired tokens, or excessive lifetime.
+- Reject tokens missing `nbf`, with fractional/non-integer `exp` or `nbf`, or with `nbf` more than 60 seconds in the future.
 - Reject token backend bodies larger than 64 KiB without parsing or retaining the full response.
 - Reject LiveKit URLs that are not WSS, except loopback WS during local development.
 - Verify that backend redirects are not followed.
