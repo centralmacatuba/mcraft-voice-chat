@@ -46,16 +46,24 @@ public final class HttpVoiceModerationProvider implements VoiceModerationProvide
     }
 
     @Override
-    public CompletableFuture<Void> setMuted(UUID playerUuid, String serverId, String room, boolean muted) {
+    public CompletableFuture<Void> setMuted(UUID playerUuid, String serverId, String room, boolean muted,
+                                            long revision, UUID operationId) {
+        if (revision < 1 || operationId == null) {
+            return CompletableFuture.failedFuture(
+                    new IllegalArgumentException("Moderation revision and operation ID are required."));
+        }
         JsonObject body = new JsonObject();
         body.addProperty("playerUuid", playerUuid.toString());
         body.addProperty("serverId", serverId);
         body.addProperty("room", room);
         body.addProperty("muted", muted);
+        body.addProperty("revision", revision);
+        body.addProperty("operationId", operationId.toString());
         HttpRequest request = HttpRequest.newBuilder(endpoint).timeout(requestTimeout)
                 .header("Authorization", "Bearer " + bearerToken)
                 .header("Content-Type", "application/json").header("Accept", "application/json")
                 .header("Cache-Control", "no-store")
+                .header("Idempotency-Key", operationId.toString())
                 .POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
         return client.sendAsync(request, HttpResponse.BodyHandlers.discarding()).thenApply(response -> {
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
