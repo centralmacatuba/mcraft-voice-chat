@@ -61,7 +61,9 @@ This checklist describes tests that require a real Paper server, a compatible Mi
 - Send unknown actions containing control characters; verify they are sanitized before logging.
 - Confirm that logs never contain the backend Bearer token, LiveKit API secret, or participant JWT.
 - Verify that `VoiceCredentials.toString()` redacts the JWT.
-- Test Cloud and self-hosted token revocation behavior separately. Self-hosted LiveKit does not invalidate already-issued tokens when permissions change; stale tokens can remain usable until expiry.
+- Keep a client connected long enough to receive a server-refreshed LiveKit token, then simulate a network interruption and reconnect; record whether the refreshed credential is used.
+- On LiveKit Cloud, remove a participant/update permissions and verify the `nbf` revocation cutoff, one-minute default clock-skew buffer, and 10-minute revocation window. Test explicit `revoke_token_ts` if the backend uses it.
+- On self-hosted LiveKit, verify that participant removal does not revoke already-issued/refreshed reconnect tokens; confirm that backend admission control blocks new token issuance and reconnection as required.
 
 ## Evidence to record
 
