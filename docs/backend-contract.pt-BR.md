@@ -11,6 +11,7 @@ Este documento define o contrato servidor-a-servidor consumido pelo plugin Paper
 - Aplique limites de requisições e registre alterações administrativas de moderação.
 - Nunca registre cabeçalhos Authorization, JWTs ou corpos completos de resposta.
 - Não redirecione requisições para outro host.
+- Exija URLs LiveKit com WSS. WS inseguro fica desabilitado por padrão e só pode ser habilitado para testes locais em loopback com `voice-chat.token-provider.allow-insecure-loopback: true`.
 
 ## Endpoint de tokens
 
