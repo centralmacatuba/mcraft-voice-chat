@@ -46,7 +46,7 @@ Esta lista descreve testes que exigem um servidor Paper real, uma versão compat
 - Confirme que um token solicitado após o mute contém `video.canPublish=false`.
 - Remova o mute e confirme que o backend restaura a permissão de publicação pretendida.
 - Silencie um jogador offline cuja identidade esteja no cache do Paper (o jogador precisa ter entrado ao menos uma vez); reinicie o Paper e confirme que a política persistida é aplicada quando ele reconectar.
-- Envie mute e depois unmute (e também unmute e depois mute) rapidamente para o mesmo UUID. Simule timeout no cliente com a requisição antiga ainda em processamento e confirme que o backend rejeita revisões antigas, preserva a última mutação aceita e permite reconciliação do estado. A fila local, sozinha, não garante a ordem de execução remota; consulte a issue #4.
+- Envie mute e depois unmute (e também unmute e depois mute) rapidamente para o mesmo UUID. Confirme que cada requisição contém uma revisão persistida maior e um ID de operação único. Simule timeout enquanto a requisição antiga ainda está em processamento; o backend deve rejeitar revisões obsoletas atomicamente, mesmo se a requisição antiga chegar depois de uma nova. A fila local apenas serializa o envio local.
 - Envie solicitações para dois UUIDs diferentes; confirme que elas não são serializadas desnecessariamente entre si.
 - Altere o estado de mute enquanto a emissão de token estiver pendente; o plugin deve descartar credenciais com permissões antigas e solicitar um novo token.
 - Faça o endpoint retornar status diferente de 2xx ou expirar; o plugin não deve alterar o estado local nem informar sucesso.
@@ -55,7 +55,7 @@ Esta lista descreve testes que exigem um servidor Paper real, uma versão compat
 
 - Rejeite JSON malformado, sala ou UUID inesperados, algoritmo JWT não suportado, permissões ausentes, tokens expirados ou com validade excessiva.
 - Rejeite tokens sem `nbf`, com `exp` ou `nbf` fracionário/não inteiro, com `exp <= nbf`, com validade total `exp - nbf` acima do máximo configurado, ou com `nbf` mais de 60 segundos no futuro.
-- Rejeite corpos de resposta do backend de tokens maiores que 64 KiB sem analisá-los nem mantê-los integralmente na memória.
+- Rejeite corpos de resposta do backend de tokens maiores que 64 KiB cancelando a assinatura do corpo. Simule um corpo que trava após os cabeçalhos; confirme o cancelamento no prazo total da requisição e que nenhuma credencial seja entregue após o timeout.
 - Rejeite todas as URLs `ws://` por padrão; confirme que `ws://` em loopback só funciona com `allow-insecure-loopback: true` e que `ws://` remoto continua rejeitado mesmo com essa opção habilitada.
 - Confirme que redirecionamentos do backend não são seguidos.
 - Envie mensagens de plugin malformadas repetidamente; confirme que os avisos nos logs têm limite de frequência por jogador.
