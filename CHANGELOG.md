@@ -19,7 +19,7 @@ The format is based on Keep a Changelog and the project follows Semantic Version
 - Default and maximum token lifetime reduced to 600 seconds.
 - Gson is compile-only for the plugin artifact and explicitly available to tests.
 - Token requests include a deny-only force-muted hint; the backend's persisted policy may impose stricter restrictions.
-- JWT claim validation requires HS256 and validates integer exp and optional nbf NumericDate claims.
+- JWT claim validation requires HS256 and validates integer exp and required nbf NumericDate claims.
 - Plugin-message strings use strict UTF-8 handling.
 - Gradle dependency verification with SHA-256 checksums and actionlint validation for GitHub Actions workflows.
 - Voice status distinguishes local configuration from backend connectivity, which is checked only when requests are made.
