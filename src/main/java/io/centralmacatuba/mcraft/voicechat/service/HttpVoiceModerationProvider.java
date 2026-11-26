@@ -7,6 +7,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.UUID;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
@@ -18,6 +19,11 @@ public final class HttpVoiceModerationProvider implements VoiceModerationProvide
     private final Duration requestTimeout;
 
     public HttpVoiceModerationProvider(URI endpoint, String bearerToken, Duration requestTimeout) {
+        this(endpoint, bearerToken, requestTimeout, HttpClient.newBuilder().connectTimeout(requestTimeout)
+                .followRedirects(HttpClient.Redirect.NEVER).build());
+    }
+
+    HttpVoiceModerationProvider(URI endpoint, String bearerToken, Duration requestTimeout, HttpClient client) {
         if (endpoint == null || !"https".equalsIgnoreCase(endpoint.getScheme())
                 || endpoint.getHost() == null || endpoint.getUserInfo() != null || endpoint.getFragment() != null) {
             throw new IllegalArgumentException("The moderation endpoint must be a valid HTTPS URL.");
@@ -31,8 +37,7 @@ public final class HttpVoiceModerationProvider implements VoiceModerationProvide
         this.endpoint = endpoint;
         this.bearerToken = bearerToken;
         this.requestTimeout = requestTimeout;
-        this.client = HttpClient.newBuilder().connectTimeout(requestTimeout)
-                .followRedirects(HttpClient.Redirect.NEVER).build();
+        this.client = Objects.requireNonNull(client, "client");
     }
 
     @Override
