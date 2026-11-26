@@ -108,6 +108,8 @@ Offline moderation resolves players from Paper's cached offline-player identitie
 
 Permissions: `mcraftvoice.use` (default everyone) and `mcraftvoice.moderate` (default operators).
 
+Revoking `mcraftvoice.use` causes the plugin to invalidate its local active/pending session state on the next proximity update. The current upstream plugin-message protocol has no server-to-client disable action, so this local cleanup does **not** forcibly disconnect an already connected LiveKit participant. Immediate remote revocation requires a backend participant-disconnect/admission-control operation and is not yet implemented by this plugin.
+
 ## Build and release
 
 Requirements: Paper API 1.21.11, Java 21, and the checked-in Gradle Wrapper 9.9.2.
