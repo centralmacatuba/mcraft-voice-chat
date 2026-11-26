@@ -51,18 +51,20 @@ class ModerationRevisionContractTest {
     }
 
     private record State(long revision, UUID operationId, boolean muted) { }
+    private record StoredOperation(UUID player, State state) { }
 
     private static final class ContractStore {
         private final Map<UUID, State> states = new HashMap<>();
-        private final Map<UUID, State> operations = new HashMap<>();
+        private final Map<UUID, StoredOperation> operations = new HashMap<>();
         private int acceptedMutationCount;
 
         synchronized State apply(UUID player, long revision, UUID operationId, boolean muted) {
-            State previousOperation = operations.get(operationId);
+            StoredOperation previousOperation = operations.get(operationId);
             if (previousOperation != null) {
-                if (previousOperation.revision() == revision && previousOperation.muted() == muted
-                        && states.containsKey(player)) {
-                    return previousOperation;
+                State previousState = previousOperation.state();
+                if (previousOperation.player().equals(player) && previousState.revision() == revision
+                        && previousState.muted() == muted) {
+                    return previousState;
                 }
                 throw new IllegalArgumentException("Idempotency key reused with a different payload.");
             }
@@ -72,7 +74,7 @@ class ModerationRevisionContractTest {
 
             State accepted = new State(revision, operationId, muted);
             states.put(player, accepted);
-            operations.put(operationId, accepted);
+            operations.put(operationId, new StoredOperation(player, accepted));
             acceptedMutationCount++;
             return accepted;
         }
