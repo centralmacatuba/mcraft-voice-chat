@@ -14,6 +14,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -36,6 +37,13 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
 
     public HttpVoiceTokenProvider(URI endpoint, String bearerToken, Duration requestTimeout,
                                   Duration maxTokenLifetime, boolean allowInsecureLoopback) {
+        this(endpoint, bearerToken, requestTimeout, maxTokenLifetime, allowInsecureLoopback,
+                HttpClient.newBuilder().connectTimeout(requestTimeout)
+                        .followRedirects(HttpClient.Redirect.NEVER).build());
+    }
+
+    HttpVoiceTokenProvider(URI endpoint, String bearerToken, Duration requestTimeout,
+                           Duration maxTokenLifetime, boolean allowInsecureLoopback, HttpClient client) {
         if (endpoint == null || !"https".equalsIgnoreCase(endpoint.getScheme())
                 || endpoint.getHost() == null || endpoint.getUserInfo() != null || endpoint.getFragment() != null) {
             throw new IllegalArgumentException("The token-provider endpoint must be a valid HTTPS URL.");
@@ -52,8 +60,7 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
         this.requestTimeout = requestTimeout;
         this.maxTokenLifetime = maxTokenLifetime;
         this.allowInsecureLoopback = allowInsecureLoopback;
-        this.client = HttpClient.newBuilder().connectTimeout(requestTimeout)
-                .followRedirects(HttpClient.Redirect.NEVER).build();
+        this.client = Objects.requireNonNull(client, "client");
     }
 
     @Override
