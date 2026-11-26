@@ -15,6 +15,7 @@ import java.util.Map;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -26,21 +27,32 @@ final class StubHttpClient extends HttpClient {
     private final int statusCode;
     private final Object responseBody;
     private final Throwable failure;
+    private final boolean stallBody;
+    private final AtomicBoolean bodyCancelled = new AtomicBoolean();
     private HttpRequest lastRequest;
     private int callCount;
 
     StubHttpClient(int statusCode, Object responseBody) {
-        this(statusCode, responseBody, null);
+        this(statusCode, responseBody, null, false);
+    }
+
+    StubHttpClient(int statusCode, Object responseBody, boolean stallBody) {
+        this(statusCode, responseBody, null, stallBody);
     }
 
     StubHttpClient(Throwable failure) {
-        this(0, null, failure);
+        this(0, null, failure, false);
     }
 
-    private StubHttpClient(int statusCode, Object responseBody, Throwable failure) {
+    private StubHttpClient(int statusCode, Object responseBody, Throwable failure, boolean stallBody) {
         this.statusCode = statusCode;
         this.responseBody = responseBody;
         this.failure = failure;
+        this.stallBody = stallBody;
+    }
+
+    boolean bodyCancelled() {
+        return bodyCancelled.get();
     }
 
     HttpRequest lastRequest() {
@@ -83,7 +95,7 @@ final class StubHttpClient extends HttpClient {
         subscriber.onSubscribe(new Flow.Subscription() {
             private boolean cancelled;
             @Override public void request(long count) {
-                if (cancelled || count <= 0) return;
+                if (cancelled || count <= 0 || stallBody) return;
                 try {
                     if (responseBody instanceof java.io.InputStream stream) {
                         byte[] data = stream.readAllBytes();
@@ -94,7 +106,10 @@ final class StubHttpClient extends HttpClient {
                     subscriber.onError(exception);
                 }
             }
-            @Override public void cancel() { cancelled = true; }
+            @Override public void cancel() {
+                cancelled = true;
+                bodyCancelled.set(true);
+            }
         });
         return subscriber.getBody().toCompletableFuture().thenApply(body ->
                 new StubHttpResponse<>(request, statusCode, body));
