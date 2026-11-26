@@ -87,7 +87,7 @@ The revision check and policy write must be one atomic database transaction or e
 
 A client timeout does not prove that the backend rejected or rolled back a mutation. The plugin therefore does not reuse an operation revision: the next command allocates a larger, durably stored revision and uses a new operation ID. If the older request is still running or arrives late, the backend must reject it after a higher revision has been accepted. If the older request actually committed first, the later higher revision supersedes it. Retrying the *same logical operation* must reuse its exact operation ID, revision, and payload; never retry it with a new operation ID at the same revision.
 
-The per-player queue in the plugin only serializes local dispatch. The backend compare-and-set is the authority that prevents stale remote writes across timeouts, retries, reconnects, and multiple plugin instances.
+The per-player queue in the plugin only serializes local dispatch. The backend compare-and-set is the authority that prevents stale remote writes across timeouts, retries, and reconnects.
 
 A client-side `forceMuted` hint is not enforcement. The LiveKit participant permission is the enforcement boundary. If the participant is offline, persist the policy and ensure the next token has publishing disabled.
 
