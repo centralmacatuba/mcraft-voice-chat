@@ -1,6 +1,8 @@
 package io.centralmacatuba.mcraft.voicechat.service;
 
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.net.URI;
 import java.net.Authenticator;
 import java.net.CookieHandler;
@@ -30,6 +32,7 @@ final class StubHttpClient extends HttpClient {
     private final boolean stallBody;
     private final AtomicBoolean bodyCancelled = new AtomicBoolean();
     private HttpRequest lastRequest;
+    private String lastRequestBody;
     private int callCount;
 
     StubHttpClient(int statusCode, Object responseBody) {
@@ -63,6 +66,10 @@ final class StubHttpClient extends HttpClient {
         return callCount;
     }
 
+    String lastRequestBody() {
+        return lastRequestBody;
+    }
+
     @Override public Optional<CookieHandler> cookieHandler() { return Optional.empty(); }
     @Override public Optional<Duration> connectTimeout() { return Optional.empty(); }
     @Override public Redirect followRedirects() { return Redirect.NEVER; }
@@ -85,6 +92,7 @@ final class StubHttpClient extends HttpClient {
             HttpRequest request, HttpResponse.BodyHandler<T> responseBodyHandler) {
         lastRequest = request;
         callCount++;
+        captureRequestBody(request);
         if (failure != null) return CompletableFuture.failedFuture(failure);
         HttpResponse.ResponseInfo info = new HttpResponse.ResponseInfo() {
             @Override public int statusCode() { return statusCode; }
@@ -113,6 +121,28 @@ final class StubHttpClient extends HttpClient {
         });
         return subscriber.getBody().toCompletableFuture().thenApply(body ->
                 new StubHttpResponse<>(request, statusCode, body));
+    }
+
+    private void captureRequestBody(HttpRequest request) {
+        request.bodyPublisher().ifPresent(publisher -> {
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            publisher.subscribe(new Flow.Subscriber<>() {
+                @Override public void onSubscribe(Flow.Subscription subscription) {
+                    subscription.request(Long.MAX_VALUE);
+                }
+                @Override public void onNext(ByteBuffer item) {
+                    byte[] bytes = new byte[item.remaining()];
+                    item.get(bytes);
+                    output.write(bytes, 0, bytes.length);
+                }
+                @Override public void onError(Throwable error) {
+                    throw new AssertionError("Could not capture test request body.", error);
+                }
+                @Override public void onComplete() {
+                    lastRequestBody = output.toString(StandardCharsets.UTF_8);
+                }
+            });
+        });
     }
 
     @Override
