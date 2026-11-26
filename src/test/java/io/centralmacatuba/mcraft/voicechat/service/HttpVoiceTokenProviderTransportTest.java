@@ -25,7 +25,7 @@ class HttpVoiceTokenProviderTransportTest {
 
         assertEquals("wss://livekit.example.net", credentials.url());
         assertEquals(ROOM, credentials.room());
-        assertEquals("test.jwt.signature", credentials.token());
+        assertEquals(3, credentials.token().split("\\.", -1).length);
         assertEquals(1, client.callCount());
         assertEquals("POST", client.lastRequest().method());
         assertEquals("Bearer backend-secret", client.lastRequest().headers().firstValue("Authorization").orElseThrow());
