@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -24,6 +24,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
       - name: Verify Gradle Wrapper JAR checksum
         run: echo '621008afc4f5d59357fcf06ffa644dd5aade5e091bdc363742710445f73cdaf8  gradle/wrapper/gradle-wrapper.jar' | sha256sum --check
       - name: Set up Java
@@ -44,8 +46,34 @@ jobs:
           python3 -m json.tool .release-please-manifest.json >/dev/null
       - name: Lint GitHub Actions workflows
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.11 -color
-      - name: Generate Gradle dependency verification metadata
+      - name: Bootstrap Gradle dependency verification metadata
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feat/initial-paper-implementation' && hashFiles('gradle/verification-metadata.xml') == '' }}
         run: ./gradlew --no-daemon --write-verification-metadata sha256 --warning-mode all clean test build
+      - name: Commit generated dependency verification metadata
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feat/initial-paper-implementation' && hashFiles('gradle/verification-metadata.xml') != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp gradle/verification-metadata.xml "$RUNNER_TEMP/verification-metadata.xml"
+          git fetch origin "$HEAD_REF"
+          git checkout -B "$HEAD_REF" "origin/$HEAD_REF"
+          mkdir -p gradle
+          cp "$RUNNER_TEMP/verification-metadata.xml" gradle/verification-metadata.xml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add gradle/verification-metadata.xml
+          if git diff --cached --quiet; then
+            echo "Dependency verification metadata is already current."
+            exit 0
+          fi
+          git commit -m "build: add Gradle dependency verification metadata"
+          AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c "http.extraheader=AUTHORIZATION: basic $AUTH" push origin "$HEAD_REF"
+      - name: Run tests and build plugin
+        run: ./gradlew --no-daemon --warning-mode all clean test build
       - name: Upload plugin JAR
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -53,10 +81,3 @@ jobs:
           path: build/libs/*.jar
           if-no-files-found: error
           retention-days: 14
-      - name: Upload generated dependency verification metadata
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: gradle-verification-metadata
-          path: gradle/verification-metadata.xml
-          if-no-files-found: error
-          retention-days: 1
