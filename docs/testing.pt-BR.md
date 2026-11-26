@@ -56,7 +56,7 @@ Esta lista descreve testes que exigem um servidor Paper real, uma versão compat
 - Rejeite JSON malformado, sala ou UUID inesperados, algoritmo JWT não suportado, permissões ausentes, tokens expirados ou com validade excessiva.
 - Rejeite tokens sem `nbf`, com `exp` ou `nbf` fracionário/não inteiro, com `exp <= nbf`, com validade total `exp - nbf` acima do máximo configurado, ou com `nbf` mais de 60 segundos no futuro.
 - Rejeite corpos de resposta do backend de tokens maiores que 64 KiB sem analisá-los nem mantê-los integralmente na memória.
-- Rejeite URLs LiveKit que não usem WSS, exceto WS em loopback durante desenvolvimento local.
+- Rejeite todas as URLs `ws://` por padrão; confirme que `ws://` em loopback só funciona com `allow-insecure-loopback: true` e que `ws://` remoto continua rejeitado mesmo com essa opção habilitada.
 - Confirme que redirecionamentos do backend não são seguidos.
 - Envie mensagens de plugin malformadas repetidamente; confirme que os avisos nos logs têm limite de frequência por jogador.
 - Envie ações desconhecidas com caracteres de controle; confirme que são sanitizadas antes de entrar nos logs.
