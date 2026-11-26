@@ -50,6 +50,15 @@ class HttpVoiceModerationProviderTest {
         assertEquals(Duration.ofSeconds(4), client.lastRequest().timeout().orElseThrow());
         assertEquals("11111111-1111-4111-8111-111111111111",
                 client.lastRequest().headers().firstValue("Idempotency-Key").orElseThrow());
+        com.google.gson.JsonObject body = com.google.gson.JsonParser.parseString(
+                client.lastRequestBody()).getAsJsonObject();
+        assertEquals(playerId.toString(), body.get("playerUuid").getAsString());
+        assertEquals("survival-1", body.get("serverId").getAsString());
+        assertEquals("survival", body.get("room").getAsString());
+        assertTrue(body.get("muted").getAsBoolean());
+        assertEquals(1L, body.get("revision").getAsLong());
+        assertEquals("11111111-1111-4111-8111-111111111111",
+                body.get("operationId").getAsString());
 
         assertEquals(URI.create("https://backend.example/moderation"), client.lastRequest().uri());
     }
