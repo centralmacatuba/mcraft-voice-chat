@@ -71,10 +71,30 @@ class HttpVoiceTokenProviderTest {
     }
 
     @Test
-    void rejectsTokenWithoutPublishGrantWhenNotMuted() {
-        assertThrows(IllegalStateException.class, () -> HttpVoiceTokenProvider.validateTokenClaims(
+    void acceptsBackendEnforcedMuteEvenWhenLocalHintIsFalse() {
+        assertDoesNotThrow(() -> HttpVoiceTokenProvider.validateTokenClaims(
                 token(PLAYER_ID.toString(), ROOM, Instant.now().plusSeconds(300).getEpochSecond(),
-                        true, false, true), PLAYER_ID, ROOM, Duration.ofMinutes(15)));
+                        true, false, true), PLAYER_ID, ROOM, Duration.ofMinutes(15), false));
+    }
+
+    @Test
+    void rejectsNotBeforeFartherThanAllowedClockSkew() {
+        assertThrows(IllegalStateException.class, () -> HttpVoiceTokenProvider.validateTokenClaims(
+                tokenWithNotBefore(Instant.now().plusSeconds(120).getEpochSecond()),
+                PLAYER_ID, ROOM, Duration.ofMinutes(15)));
+    }
+
+    @Test
+    void acceptsNotBeforeWithinAllowedClockSkew() {
+        assertDoesNotThrow(() -> HttpVoiceTokenProvider.validateTokenClaims(
+                tokenWithNotBefore(Instant.now().plusSeconds(30).getEpochSecond()),
+                PLAYER_ID, ROOM, Duration.ofMinutes(15)));
+    }
+
+    @Test
+    void rejectsFractionalExpirationNumericDate() {
+        assertThrows(IllegalStateException.class, () -> HttpVoiceTokenProvider.validateTokenClaims(
+                tokenWithFractionalExpiration(), PLAYER_ID, ROOM, Duration.ofMinutes(15)));
     }
 
     @Test
@@ -121,5 +141,43 @@ class HttpVoiceTokenProviderTest {
         String h = encoder.encodeToString(header.toString().getBytes(StandardCharsets.UTF_8));
         String p = encoder.encodeToString(claims.toString().getBytes(StandardCharsets.UTF_8));
         return h + "." + p + ".dGVzdC1zaWduYXR1cmU";
+    } 
+    private static String tokenWithNotBefore(long notBefore) {
+        JsonObject header = new JsonObject();
+        header.addProperty("alg", "HS256");
+        JsonObject video = new JsonObject();
+        video.addProperty("room", ROOM);
+        video.addProperty("roomJoin", true);
+        video.addProperty("canPublish", true);
+        video.addProperty("canSubscribe", true);
+        JsonObject claims = new JsonObject();
+        claims.addProperty("sub", PLAYER_ID.toString());
+        claims.addProperty("exp", Instant.now().plusSeconds(300).getEpochSecond());
+        claims.addProperty("nbf", notBefore);
+        claims.add("video", video);
+        return encodeJwt(header, claims);
     }
+
+    private static String tokenWithFractionalExpiration() {
+        JsonObject header = new JsonObject();
+        header.addProperty("alg", "HS256");
+        JsonObject video = new JsonObject();
+        video.addProperty("room", ROOM);
+        video.addProperty("roomJoin", true);
+        video.addProperty("canPublish", true);
+        video.addProperty("canSubscribe", true);
+        JsonObject claims = new JsonObject();
+        claims.addProperty("sub", PLAYER_ID.toString());
+        claims.addProperty("exp", Instant.now().plusSeconds(300).getEpochSecond() + 0.5);
+        claims.add("video", video);
+        return encodeJwt(header, claims);
+    }
+
+    private static String encodeJwt(JsonObject header, JsonObject claims) {
+        Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
+        String h = encoder.encodeToString(header.toString().getBytes(StandardCharsets.UTF_8));
+        String p = encoder.encodeToString(claims.toString().getBytes(StandardCharsets.UTF_8));
+        return h + "." + p + ".dGVzdC1zaWduYXR1cmU";
+    }
+
 }
