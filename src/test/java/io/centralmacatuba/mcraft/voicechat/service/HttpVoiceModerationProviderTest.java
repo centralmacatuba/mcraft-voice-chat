@@ -42,12 +42,15 @@ class HttpVoiceModerationProviderTest {
                 Duration.ofSeconds(4), client);
         UUID playerId = UUID.randomUUID();
 
-        assertDoesNotThrow(() -> provider.setMuted(playerId, "survival-1", "survival", true).join());
+        assertDoesNotThrow(() -> provider.setMuted(playerId, "survival-1", "survival", true, 1L, UUID.fromString("11111111-1111-4111-8111-111111111111")).join());
         assertEquals(1, client.callCount());
         assertEquals("POST", client.lastRequest().method());
         assertEquals("Bearer backend-secret", client.lastRequest().headers().firstValue("Authorization").orElseThrow());
         assertEquals("application/json", client.lastRequest().headers().firstValue("Content-Type").orElseThrow());
         assertEquals(Duration.ofSeconds(4), client.lastRequest().timeout().orElseThrow());
+        assertEquals("11111111-1111-4111-8111-111111111111",
+                client.lastRequest().headers().firstValue("Idempotency-Key").orElseThrow());
+
         assertEquals(URI.create("https://backend.example/moderation"), client.lastRequest().uri());
     }
 
@@ -59,7 +62,7 @@ class HttpVoiceModerationProviderTest {
                     URI.create("https://backend.example/moderation"), "secret",
                     Duration.ofSeconds(2), client);
             assertThrows(CompletionException.class,
-                    () -> provider.setMuted(UUID.randomUUID(), "server", "room", true).join());
+                    () -> provider.setMuted(UUID.randomUUID(), "server", "room", true, 1L, UUID.randomUUID()).join());
             assertEquals(1, client.callCount());
         }
     }
@@ -73,7 +76,7 @@ class HttpVoiceModerationProviderTest {
                     URI.create("https://backend.example/moderation"), "secret",
                     Duration.ofSeconds(2), client);
             assertThrows(CompletionException.class,
-                    () -> provider.setMuted(UUID.randomUUID(), "server", "room", false).join());
+                    () -> provider.setMuted(UUID.randomUUID(), "server", "room", false, 1L, UUID.randomUUID()).join());
             assertEquals(1, client.callCount());
         }
     }
