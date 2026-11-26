@@ -42,7 +42,7 @@ public final class VoiceChatCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(ChatColor.GREEN + "Voice chat: " + state + ChatColor.WHITE
                     + " — " + plugin.getActiveVoiceSessionCount() + " jogador(es) com sessão ativa.");
             sender.sendMessage(ChatColor.GRAY + "Backend de tokens: "
-                    + (plugin.isVoiceChatOperational()
+                    + (plugin.isVoiceChatConfigured()
                     ? ChatColor.YELLOW + "conectividade não verificada (testada ao solicitar sessão)" : ChatColor.RED + "indisponível"));
             sender.sendMessage(ChatColor.GRAY + "Moderação no LiveKit: "
                     + (plugin.isServerModerationAvailable()
