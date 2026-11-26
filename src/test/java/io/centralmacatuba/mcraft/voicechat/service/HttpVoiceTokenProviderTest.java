@@ -78,6 +78,12 @@ class HttpVoiceTokenProviderTest {
     }
 
     @Test
+    void rejectsTokenWithoutNotBeforeClaim() {
+        assertThrows(IllegalStateException.class, () -> HttpVoiceTokenProvider.validateTokenClaims(
+                tokenWithoutNotBefore(), PLAYER_ID, ROOM, Duration.ofMinutes(15)));
+    }
+
+    @Test
     void rejectsNotBeforeFartherThanAllowedClockSkew() {
         assertThrows(IllegalStateException.class, () -> HttpVoiceTokenProvider.validateTokenClaims(
                 tokenWithNotBefore(Instant.now().plusSeconds(120).getEpochSecond()),
@@ -136,6 +142,7 @@ class HttpVoiceTokenProviderTest {
         JsonObject claims = new JsonObject();
         claims.addProperty("sub", identity);
         claims.addProperty("exp", expiresAt);
+        claims.addProperty("nbf", Instant.now().minusSeconds(1).getEpochSecond());
         claims.add("video", video);
         Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
         String h = encoder.encodeToString(header.toString().getBytes(StandardCharsets.UTF_8));
@@ -169,6 +176,7 @@ class HttpVoiceTokenProviderTest {
         JsonObject claims = new JsonObject();
         claims.addProperty("sub", PLAYER_ID.toString());
         claims.addProperty("exp", Instant.now().plusSeconds(300).getEpochSecond() + 0.5);
+        claims.addProperty("nbf", Instant.now().minusSeconds(1).getEpochSecond());
         claims.add("video", video);
         return encodeJwt(header, claims);
     }
@@ -178,6 +186,21 @@ class HttpVoiceTokenProviderTest {
         String h = encoder.encodeToString(header.toString().getBytes(StandardCharsets.UTF_8));
         String p = encoder.encodeToString(claims.toString().getBytes(StandardCharsets.UTF_8));
         return h + "." + p + ".dGVzdC1zaWduYXR1cmU";
+    }
+
+    private static String tokenWithoutNotBefore() {
+        JsonObject header = new JsonObject();
+        header.addProperty("alg", "HS256");
+        JsonObject video = new JsonObject();
+        video.addProperty("room", ROOM);
+        video.addProperty("roomJoin", true);
+        video.addProperty("canPublish", true);
+        video.addProperty("canSubscribe", true);
+        JsonObject claims = new JsonObject();
+        claims.addProperty("sub", PLAYER_ID.toString());
+        claims.addProperty("exp", Instant.now().plusSeconds(300).getEpochSecond());
+        claims.add("video", video);
+        return encodeJwt(header, claims);
     }
 
 }
