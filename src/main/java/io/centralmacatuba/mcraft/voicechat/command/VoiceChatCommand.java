@@ -37,12 +37,16 @@ public final class VoiceChatCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 1 && args[0].equalsIgnoreCase("status")) {
             String state = !plugin.isVoiceChatEnabled() ? ChatColor.RED + "desativado"
-                    : plugin.isVoiceChatOperational() ? ChatColor.GREEN + "operacional"
+                    : plugin.isVoiceChatOperational() ? ChatColor.GREEN + "configurado"
                     : ChatColor.YELLOW + "indisponível (backend de tokens não configurado)";
             sender.sendMessage(ChatColor.GREEN + "Voice chat: " + state + ChatColor.WHITE
                     + " — " + plugin.getActiveVoiceSessionCount() + " jogador(es) com sessão ativa.");
+            sender.sendMessage(ChatColor.GRAY + "Backend de tokens: "
+                    + (plugin.isVoiceChatOperational()
+                    ? ChatColor.YELLOW + "conectividade verificada ao solicitar uma sessão" : ChatColor.RED + "indisponível"));
             sender.sendMessage(ChatColor.GRAY + "Moderação no LiveKit: "
-                    + (plugin.isServerModerationAvailable() ? ChatColor.GREEN + "configurada" : ChatColor.RED + "não configurada"));
+                    + (plugin.isServerModerationAvailable()
+                    ? ChatColor.GREEN + "configurada (conectividade verificada ao moderar)" : ChatColor.RED + "não configurada"));
             return true;
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("mute") || args[0].equalsIgnoreCase("unmute"))) {
