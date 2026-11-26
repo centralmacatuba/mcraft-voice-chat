@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -46,32 +46,6 @@ jobs:
           python3 -m json.tool .release-please-manifest.json >/dev/null
       - name: Lint GitHub Actions workflows
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.11 -color
-      - name: Bootstrap Gradle dependency verification metadata
-        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feat/initial-paper-implementation' && hashFiles('gradle/verification-metadata.xml') == '' }}
-        run: ./gradlew --no-daemon --write-verification-metadata sha256 --warning-mode all clean test build
-      - name: Commit generated dependency verification metadata
-        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feat/initial-paper-implementation' && hashFiles('gradle/verification-metadata.xml') != '' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          cp gradle/verification-metadata.xml "$RUNNER_TEMP/verification-metadata.xml"
-          git fetch origin "$HEAD_REF"
-          git checkout -B "$HEAD_REF" "origin/$HEAD_REF"
-          mkdir -p gradle
-          cp "$RUNNER_TEMP/verification-metadata.xml" gradle/verification-metadata.xml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add gradle/verification-metadata.xml
-          if git diff --cached --quiet; then
-            echo "Dependency verification metadata is already current."
-            exit 0
-          fi
-          git commit -m "build: add Gradle dependency verification metadata"
-          AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
-          git -c "http.extraheader=AUTHORIZATION: basic $AUTH" push origin "$HEAD_REF"
       - name: Run tests and build plugin
         run: ./gradlew --no-daemon --warning-mode all clean test build
       - name: Upload plugin JAR
