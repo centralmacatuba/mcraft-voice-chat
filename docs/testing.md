@@ -6,6 +6,12 @@ The Gradle test suite includes MockBukkit-based integration tests. They boot a s
 
 MockBukkit is not a real Paper server and does not implement the Minecraft Web Client, a production token backend, or LiveKit/WebRTC. Passing these tests proves only the tested plugin lifecycle and command-registration behavior. Use the manual end-to-end plan below for interoperability validation.
 
+## Automated HTTP provider contract tests
+
+The token and moderation HTTP providers are tested through an injected JDK `HttpClient` boundary stub. These deterministic tests cover successful responses, authentication/request metadata, non-2xx responses, redirects being treated as failures (without a second request), connection failures, request timeouts, unexpected token rooms, and oversized token responses. They verify provider behavior without depending on external services.
+
+These are HTTP-client boundary tests, not TLS/socket interoperability tests. The providers still require HTTPS endpoints in production, and the real backend/LiveKit integration remains part of the manual end-to-end plan.
+
 # Manual integration test plan
 
 This checklist describes tests that require a real Paper server, a compatible Minecraft Web Client build, the trusted backend, and a non-production LiveKit room. Passing unit tests does not establish end-to-end compatibility.
