@@ -52,7 +52,7 @@ This checklist describes tests that require a real Paper server, a compatible Mi
 - Verify that a token requested after mute has `video.canPublish=false`.
 - Unmute and verify that the backend restores the intended publishing permission.
 - Mute an offline player whose identity is cached by Paper (the player must have joined at least once); restart Paper and verify that the persisted policy is applied when the player reconnects.
-- Submit mute then unmute (and unmute then mute) rapidly for the same UUID; verify backend requests are processed in submission order and the local mirror reflects only confirmed operations.
+- Submit mute then unmute (and unmute then mute) rapidly for the same UUID; verify each request carries a larger persisted revision and a unique operation ID. Simulate a timeout while the older request is still processing; the backend must atomically reject stale revisions, even when an older request arrives after a newer one. The local queue only serializes local dispatch.
 - Submit moderation requests for two different UUIDs; verify they are not unnecessarily serialized with each other.
 - Change mute state while token issuance is pending; verify that the plugin discards credentials with stale publish permissions and requests a fresh token.
 - Make the moderation endpoint return non-2xx or time out; verify that the plugin does not change its local mute state or report success.
@@ -61,7 +61,7 @@ This checklist describes tests that require a real Paper server, a compatible Mi
 
 - Reject token responses with malformed JSON, an unexpected room, an unexpected UUID, an unsupported JWT algorithm, missing grants, expired tokens, or excessive lifetime.
 - Reject tokens missing `nbf`, with fractional/non-integer `exp` or `nbf`, with `exp <= nbf`, with a total `exp - nbf` lifetime above the configured maximum, or with `nbf` more than 60 seconds in the future.
-- Reject token backend bodies larger than 64 KiB without parsing or retaining the full response.
+- Reject token backend bodies larger than 64 KiB by cancelling the body subscription. Simulate a body that stalls after headers; verify cancellation at the total request deadline and that no credentials are delivered after timeout.
 - Reject all `ws://` URLs by default; verify loopback `ws://` works only when `allow-insecure-loopback: true`, and remote `ws://` remains rejected even with that option enabled.
 - Verify that backend redirects are not followed.
 - Send malformed plugin messages repeatedly; verify warning logs are rate-limited per player.
