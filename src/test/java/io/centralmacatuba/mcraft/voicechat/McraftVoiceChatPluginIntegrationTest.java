@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -34,7 +35,7 @@ class McraftVoiceChatPluginIntegrationTest {
         assertTrue(plugin.isEnabled(), "Missing optional backend configuration must not disable the plugin");
         assertFalse(plugin.isVoiceChatOperational(), "Voice chat must report unavailable without a token backend");
         assertFalse(plugin.isServerModerationAvailable(), "Moderation must remain unavailable without its backend");
-        assertEqualsZeroActiveSessions();
+        assertEquals(0, plugin.getActiveVoiceSessionCount());
 
         assertNotNull(plugin.getCommand("mcraftvoice"));
         assertTrue(server.dispatchCommand(server.getConsoleSender(), "mcraftvoice status"));
@@ -45,7 +46,4 @@ class McraftVoiceChatPluginIntegrationTest {
         assertTrue(server.dispatchCommand(server.getConsoleSender(), "mcvoice status"));
     }
 
-    private void assertEqualsZeroActiveSessions() {
-        org.junit.jupiter.api.Assertions.assertEquals(0, plugin.getActiveVoiceSessionCount());
-    }
 }

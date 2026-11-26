@@ -14,7 +14,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.net.URI;
 import java.time.Duration;
 
-public final class McraftVoiceChatPlugin extends JavaPlugin {
+public class McraftVoiceChatPlugin extends JavaPlugin {
     private VoicePlayerManager playerManager;
     private VoiceProximityService proximityService;
     private VoiceTokenProvider tokenProvider;
