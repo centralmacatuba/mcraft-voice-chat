@@ -44,8 +44,8 @@ jobs:
           python3 -m json.tool .release-please-manifest.json >/dev/null
       - name: Lint GitHub Actions workflows
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.11 -color
-      - name: Run tests and build plugin
-        run: ./gradlew --no-daemon --warning-mode all clean test build
+      - name: Generate Gradle dependency verification metadata
+        run: ./gradlew --no-daemon --write-verification-metadata sha256 --warning-mode all clean test build
       - name: Upload plugin JAR
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -53,3 +53,10 @@ jobs:
           path: build/libs/*.jar
           if-no-files-found: error
           retention-days: 14
+      - name: Upload generated dependency verification metadata
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gradle-verification-metadata
+          path: gradle/verification-metadata.xml
+          if-no-files-found: error
+          retention-days: 1
