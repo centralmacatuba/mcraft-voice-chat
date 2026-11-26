@@ -14,4 +14,4 @@ Unacceptable behavior includes harassment, insults, intimidation, discrimination
 
 Project maintainers are responsible for clarifying and enforcing this code. Report unacceptable behavior privately through the contact options listed in the repository's GitHub profile. Reports will be reviewed and handled as confidentially as reasonably possible.
 
-Adapted from Contributor Covenant 2.1.
+Adapted from [Contributor Covenant version 2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
