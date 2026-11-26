@@ -118,7 +118,7 @@ Requirements: Paper API 1.21.11, Java 21, and the checked-in Gradle Wrapper 9.9.
 ./gradlew --no-daemon clean test build
 ```
 
-The plugin JAR is generated in `build/libs/`. CI validates YAML/JSON metadata, lints GitHub Actions workflows with actionlint, runs unit tests and MockBukkit server-lifecycle integration tests, builds the JAR, and uploads it as a workflow artifact. MockBukkit verifies the plugin lifecycle and command registration against a simulated Paper server; it does not replace real Minecraft Web Client, backend, or LiveKit end-to-end tests.
+The plugin JAR is generated in `build/libs/`. Gradle verifies dependency and metadata SHA-256 checksums using `gradle/verification-metadata.xml`; update and review this file when intentionally changing dependencies. CI validates YAML/JSON metadata, lints GitHub Actions workflows with actionlint, runs unit tests and MockBukkit server-lifecycle integration tests, builds the JAR, and uploads it as a workflow artifact. MockBukkit verifies the plugin lifecycle and command registration against a simulated Paper server; it does not replace real Minecraft Web Client, backend, or LiveKit end-to-end tests.
 
 Releases use [Conventional Commits](https://www.conventionalcommits.org/) and [Release Please](https://github.com/googleapis/release-please). On pushes to `principal`, Release Please opens or updates a release pull request with the version and changelog. Merging that PR creates the `vX.Y.Z` tag and GitHub Release; the tag-triggered workflow then tests/builds the plugin and attaches the JAR to that existing release. Configure the repository secret `RELEASE_PLEASE_TOKEN` as described in [CONTRIBUTING.md](CONTRIBUTING.md). The manifest currently tracks `0.1.0` as the unreleased baseline.
 
