@@ -12,6 +12,9 @@ import java.net.http.HttpResponse;
 import java.net.http.WebSocket;
 import java.time.Duration;
 import java.util.Map;
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.concurrent.Flow;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -66,14 +69,35 @@ final class StubHttpClient extends HttpClient {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public <T> CompletableFuture<HttpResponse<T>> sendAsync(
             HttpRequest request, HttpResponse.BodyHandler<T> responseBodyHandler) {
         lastRequest = request;
         callCount++;
         if (failure != null) return CompletableFuture.failedFuture(failure);
-        return CompletableFuture.completedFuture(new StubHttpResponse<>(
-                request, statusCode, (T) responseBody));
+        HttpResponse.ResponseInfo info = new HttpResponse.ResponseInfo() {
+            @Override public int statusCode() { return statusCode; }
+            @Override public HttpHeaders headers() { return HttpHeaders.of(Map.of(), (name, value) -> true); }
+            @Override public Version version() { return Version.HTTP_1_1; }
+        };
+        HttpResponse.BodySubscriber<T> subscriber = responseBodyHandler.apply(info);
+        subscriber.onSubscribe(new Flow.Subscription() {
+            private boolean cancelled;
+            @Override public void request(long count) {
+                if (cancelled || count <= 0) return;
+                try {
+                    if (responseBody instanceof java.io.InputStream stream) {
+                        byte[] data = stream.readAllBytes();
+                        if (data.length > 0) subscriber.onNext(List.of(ByteBuffer.wrap(data)));
+                    }
+                    subscriber.onComplete();
+                } catch (IOException exception) {
+                    subscriber.onError(exception);
+                }
+            }
+            @Override public void cancel() { cancelled = true; }
+        });
+        return subscriber.getBody().toCompletableFuture().thenApply(body ->
+                new StubHttpResponse<>(request, statusCode, body));
     }
 
     @Override
