@@ -76,6 +76,8 @@ The backend must:
 
 A client-side `forceMuted` hint is not enforcement. The LiveKit participant permission is the enforcement boundary. If the participant is offline, persist the policy and ensure the next token has publishing disabled.
 
+The plugin currently invalidates its local active/pending session state when `mcraftvoice.use` is revoked, but the upstream protocol has no server-to-client disable action and this repository does not yet call a backend participant-removal/admission-control operation for that event. An already connected LiveKit participant may therefore remain connected until the client disconnects or its session ends. Do not treat local permission revalidation as immediate remote revocation.
+
 ## Operations
 
 Use one backend credential per Paper server, keep LiveKit API credentials only in the backend secret store, restrict administrative capability to required rooms, and test token issuance, mute, unmute, reconnect, and restart against a non-production room before deployment.
