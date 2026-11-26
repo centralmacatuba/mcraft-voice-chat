@@ -91,6 +91,20 @@ class HttpVoiceTokenProviderTest {
     }
 
     @Test
+    void rejectsTokenWhoseTotalLifetimeFromNotBeforeIsTooLong() {
+        assertThrows(IllegalStateException.class, () -> HttpVoiceTokenProvider.validateTokenClaims(
+                tokenWithNotBefore(Instant.now().minusSeconds(3600).getEpochSecond()),
+                PLAYER_ID, ROOM, Duration.ofMinutes(15)));
+    }
+
+    @Test
+    void rejectsExpirationThatPrecedesNotBefore() {
+        long now = Instant.now().getEpochSecond();
+        assertThrows(IllegalStateException.class, () -> HttpVoiceTokenProvider.validateTokenClaims(
+                tokenWithDates(now + 20, now + 30), PLAYER_ID, ROOM, Duration.ofMinutes(15)));
+    }
+
+    @Test
     void acceptsNotBeforeWithinAllowedClockSkew() {
         assertDoesNotThrow(() -> HttpVoiceTokenProvider.validateTokenClaims(
                 tokenWithNotBefore(Instant.now().plusSeconds(30).getEpochSecond()),
@@ -156,6 +170,10 @@ class HttpVoiceTokenProviderTest {
         return h + "." + p + ".dGVzdC1zaWduYXR1cmU";
     } 
     private static String tokenWithNotBefore(long notBefore) {
+        return tokenWithDates(Instant.now().plusSeconds(300).getEpochSecond(), notBefore);
+    }
+
+    private static String tokenWithDates(long expiresAt, long notBefore) {
         JsonObject header = new JsonObject();
         header.addProperty("alg", "HS256");
         JsonObject video = new JsonObject();
@@ -165,7 +183,7 @@ class HttpVoiceTokenProviderTest {
         video.addProperty("canSubscribe", true);
         JsonObject claims = new JsonObject();
         claims.addProperty("sub", PLAYER_ID.toString());
-        claims.addProperty("exp", Instant.now().plusSeconds(300).getEpochSecond());
+        claims.addProperty("exp", expiresAt);
         claims.addProperty("nbf", notBefore);
         claims.add("video", video);
         return encodeJwt(header, claims);
