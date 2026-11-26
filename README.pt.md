@@ -6,9 +6,9 @@ Plugin público e reutilizável para Paper, desenvolvido pelo **Desenvolvedor EE
 
 Este é um projeto independente, sem vínculo ou endosso da Prefeitura Municipal de Macatuba.
 
-O plugin foi projetado para servidores Minecraft independentes. Infraestrutura, credenciais, nomes de salas e políticas de moderação específicas de cada servidor pertencem à instalação, não a este repositório.
+O plugin foi projetado para servidores Minecraft independentes. A infraestrutura, as credenciais, os nomes das salas e as políticas de moderação específicas de cada servidor pertencem à instalação, não a este repositório.
 
-> **Estado do projeto:** implementação inicial para Paper com emissão de tokens, atualização de proximidade e contrato de integração HTTP para moderação. A compatibilidade ponta a ponta com o cliente upstream e uma implantação LiveKit real ainda precisa ser testada.
+> **Estado do projeto:** implementação inicial para Paper com emissão de tokens, atualização de proximidade e contrato de integração HTTP para moderação. A compatibilidade ponta a ponta com o cliente upstream e uma implantação LiveKit real ainda precisam ser testadas.
 
 ## Arquitetura
 
@@ -39,7 +39,7 @@ O áudio trafega diretamente por WebRTC entre o cliente e o LiveKit. As mensagen
 - Solicitações de mute/unmute no servidor por endpoint de moderação separado e autenticado.
 - UUIDs silenciados persistidos e restaurados após reconexões e reinicializações.
 - Moderação offline para identidades já presentes no cache de jogadores offline do servidor.
-- Fila de solicitações de moderação ordenada por jogador, evitando que respostas antigas de mute/unmute sobrescrevam o estado mais recente.
+- Fila local que serializa solicitações de moderação por jogador. A ordenação efetiva no backend após timeouts exige controle de sequência no próprio backend (consulte a issue #4).
 - Cálculo de proximidade no mesmo mundo e supressão de payloads inalterados.
 - Avisos de pacotes malformados com limite de frequência e leitura limitada das respostas do endpoint de tokens.
 - Comandos `/mcraftvoice status`, `mute <jogador>` e `unmute <jogador>`.
@@ -103,7 +103,7 @@ Se o endpoint de moderação não estiver configurado, os comandos de moderaçã
 - `/mcraftvoice status` — sessões ativas e estado do backend de moderação.
 - `/mcraftvoice mute <jogador>` — persiste e aplica o mute pelo backend.
 - `/mcraftvoice unmute <jogador>` — remove a política de mute no backend.
-- Alias: `/mcvoice`.
+- Apelido: `/mcvoice`.
 
 A moderação offline resolve jogadores pelo cache de identidades offline do Paper. O jogador precisa ter entrado no servidor ao menos uma vez; nomes desconhecidos não são resolvidos por consultas de rede bloqueantes.
 
