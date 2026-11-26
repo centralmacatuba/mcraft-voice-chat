@@ -28,4 +28,5 @@ The format is based on Keep a Changelog and the project follows Semantic Version
 ### Security
 - JWTs are redacted from credential diagnostic output and malformed backend responses are not included in exception causes.
 - HTTP clients do not follow redirects, preventing bearer credentials from being forwarded to redirect targets.
+- Insecure LiveKit `ws://` URLs are rejected by default; loopback-only use requires an explicit local-testing opt-in.
 - Active and pending sessions are invalidated when the player loses mcraftvoice.use.
