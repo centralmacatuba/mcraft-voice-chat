@@ -62,18 +62,32 @@ Body:
   "playerUuid": "00000000-0000-0000-0000-000000000000",
   "serverId": "mcraft",
   "room": "minecraft-survival",
-  "muted": true
+  "muted": true,
+  "revision": 42,
+  "operationId": "11111111-1111-4111-8111-111111111111"
 }
 ```
 
-Return a 2xx status only after the mute policy is durably stored and the LiveKit operation is accepted. Return non-2xx if it cannot be applied; the plugin then leaves its local mute state unchanged.
+The plugin also sends `Idempotency-Key: <operationId>`. The revision is allocated monotonically and persisted locally before dispatch. A skipped revision is harmless; a revision must never be reused for a different operation.
 
-The backend must:
+Return a 2xx status only after the mute policy is durably stored and the LiveKit operation is accepted. Return `409 Conflict` for a stale revision (or an operation-ID/revision reuse with a different payload); other non-2xx responses indicate that the mutation was not confirmed. The plugin leaves its local mute mirror unchanged on every non-2xx response.
+
+The backend must implement an atomic compare-and-set per `(authenticatedServerId, room, playerUuid)`:
 1. validate that the authenticated server may manage the supplied server ID and room;
-2. persist the policy by server, room, and participant UUID;
-3. update connected participants so `canPublish=false` when muted and restore the intended permission when unmuted;
-4. apply persisted policy to future tokens, including after reconnects;
-5. make repeated requests idempotent.
+2. persist the policy by server, room, and participant UUID together with the highest accepted revision and operation ID;
+3. accept a mutation only when its revision is strictly greater than the stored revision, then atomically persist the revision, operation ID, and desired mute state before applying LiveKit effects;
+4. reject a lower revision without changing the stored policy or LiveKit permissions, even if that HTTP request arrives after a newer mutation;
+5. if the same operation ID and revision are received again with the identical payload, return the original successful result without applying a second logical mutation; reject reuse with a different payload;
+6. update connected participants so `canPublish=false` when muted and restore the intended permission when unmuted;
+7. apply persisted policy to future tokens, including after reconnects.
+
+The revision check and policy write must be one atomic database transaction or equivalent compare-and-set operation. Do not implement the check as a separate read followed by an unconditional write.
+
+### Timeout and unknown outcomes
+
+A client timeout does not prove that the backend rejected or rolled back a mutation. The plugin therefore does not reuse an operation revision: the next command allocates a larger, durably stored revision and uses a new operation ID. If the older request is still running or arrives late, the backend must reject it after a higher revision has been accepted. If the older request actually committed first, the later higher revision supersedes it. Retrying the *same logical operation* must reuse its exact operation ID, revision, and payload; never retry it with a new operation ID at the same revision.
+
+The per-player queue in the plugin only serializes local dispatch. The backend compare-and-set is the authority that prevents stale remote writes across timeouts, retries, reconnects, and multiple plugin instances.
 
 A client-side `forceMuted` hint is not enforcement. The LiveKit participant permission is the enforcement boundary. If the participant is offline, persist the policy and ensure the next token has publishing disabled.
 
