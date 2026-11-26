@@ -8,7 +8,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 /**
- * Serializes moderation mutations per player so backend requests cannot complete out of order.
+ * Serializes local moderation request dispatch per player.
+ * Remote ordering is enforced by backend revisions, not by this queue: a timed-out request
+ * may still be executing remotely while a later request is dispatched.
  * A failed operation does not prevent the next queued mutation from being attempted.
  */
 public final class ModerationRequestQueue {
