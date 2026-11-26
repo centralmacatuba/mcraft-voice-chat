@@ -33,7 +33,7 @@ class McraftVoiceChatPluginIntegrationTest {
     @Test
     void enablesWithoutBackendAndKeepsStatusCommandAvailable() {
         assertTrue(plugin.isEnabled(), "Missing optional backend configuration must not disable the plugin");
-        assertFalse(plugin.isVoiceChatOperational(), "Voice chat must report unavailable without a token backend");
+        assertFalse(plugin.isVoiceChatConfigured(), "Voice chat must report unavailable without a token backend");
         assertFalse(plugin.isServerModerationAvailable(), "Moderation must remain unavailable without its backend");
         assertEquals(0, plugin.getActiveVoiceSessionCount());
 
