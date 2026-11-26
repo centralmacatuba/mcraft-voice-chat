@@ -54,7 +54,7 @@ Esta lista descreve testes que exigem um servidor Paper real, uma versão compat
 ## Respostas inválidas e segurança
 
 - Rejeite JSON malformado, sala ou UUID inesperados, algoritmo JWT não suportado, permissões ausentes, tokens expirados ou com validade excessiva.
-- Rejeite tokens sem `nbf`, com `exp` ou `nbf` fracionário/não inteiro, ou com `nbf` mais de 60 segundos no futuro.
+- Rejeite tokens sem `nbf`, com `exp` ou `nbf` fracionário/não inteiro, com `exp <= nbf`, com validade total `exp - nbf` acima do máximo configurado, ou com `nbf` mais de 60 segundos no futuro.
 - Rejeite corpos de resposta do backend de tokens maiores que 64 KiB sem analisá-los nem mantê-los integralmente na memória.
 - Rejeite URLs LiveKit que não usem WSS, exceto WS em loopback durante desenvolvimento local.
 - Confirme que redirecionamentos do backend não são seguidos.
