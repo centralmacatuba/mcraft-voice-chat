@@ -87,7 +87,7 @@ A verificação da revisão e a gravação da política devem ocorrer na mesma t
 
 Um timeout não prova que o backend rejeitou ou desfez a mutação. O próximo comando recebe uma revisão maior, persistida antes do envio, e um novo ID de operação. Se a requisição antiga ainda estiver em execução ou chegar atrasada, o backend deve rejeitá-la depois que uma revisão maior tiver sido aceita. Se a antiga tiver sido confirmada primeiro, a revisão maior seguinte a substitui. Uma nova tentativa da mesma operação lógica deve reutilizar exatamente o mesmo ID, revisão e payload.
 
-A fila do plugin apenas serializa o envio local. O compare-and-set do backend impede gravações remotas obsoletas após timeouts, novas tentativas, reconexões e múltiplas instâncias do plugin.
+A fila do plugin apenas serializa o envio local. O compare-and-set do backend impede gravações remotas obsoletas após timeouts, novas tentativas e reconexões.
 
 Uma indicação `forceMuted` enviada ao cliente não é aplicação efetiva. A permissão do participante no LiveKit é a fronteira de aplicação. Se o participante estiver offline, persista a política e garanta que o próximo token seja emitido sem permissão de publicação.
 
