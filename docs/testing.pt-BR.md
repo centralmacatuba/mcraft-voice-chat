@@ -27,7 +27,7 @@ Esta lista descreve testes que exigem um servidor Paper real, uma versão compat
 - Desative o voice chat e confirme que o servidor remove a sessão ativa.
 - Desconecte enquanto a emissão do token estiver pendente; uma resposta tardia não deve criar uma sessão ativa.
 - Reconecte e confirme que o jogador pode solicitar uma nova sessão.
-- Remova `mcraftvoice.use` de um jogador com sessão ativa; confirme que o servidor envia `disable` e remove a sessão na próxima atualização de proximidade.
+- Remova `mcraftvoice.use` de um jogador com sessão ativa; confirme que o servidor remove a sessão local na próxima atualização de proximidade e não envia novas atualizações `nearby` para esse jogador. O protocolo upstream atual não possui uma ação `disable` do servidor para o cliente; isso, por si só, não desconecta um participante já conectado ao LiveKit.
 - Remova `mcraftvoice.use` enquanto a emissão do token estiver pendente; confirme que a solicitação é invalidada e uma resposta tardia não cria uma sessão.
 
 ## Proximidade
