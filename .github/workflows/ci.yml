@@ -42,6 +42,8 @@ jobs:
             src/main/resources/config.yml src/main/resources/plugin.yml
           python3 -m json.tool .release-please-config.json >/dev/null
           python3 -m json.tool .release-please-manifest.json >/dev/null
+      - name: Lint GitHub Actions workflows
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.11 -color
       - name: Run tests and build plugin
         run: ./gradlew --no-daemon --warning-mode all clean test build
       - name: Upload plugin JAR
