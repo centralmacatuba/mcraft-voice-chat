@@ -61,7 +61,9 @@ Esta lista descreve testes que exigem um servidor Paper real, uma versão compat
 - Envie ações desconhecidas com caracteres de controle; confirme que são sanitizadas antes de entrar nos logs.
 - Confirme que os logs nunca contêm Bearer token do backend, segredo da API LiveKit ou JWT de participante.
 - Confirme que `VoiceCredentials.toString()` oculta o JWT.
-- Teste separadamente a revogação de tokens no LiveKit Cloud e self-hosted. O LiveKit self-hosted não invalida tokens já emitidos quando as permissões mudam; tokens antigos podem continuar utilizáveis até expirar.
+- Mantenha um cliente conectado tempo suficiente para receber um token LiveKit renovado pelo servidor; depois simule uma interrupção de rede e reconecte, registrando se a credencial renovada é utilizada.
+- No LiveKit Cloud, remova um participante/altere permissões e verifique o limite de revogação `nbf`, a tolerância padrão de um minuto para diferença de relógio e a janela de revogação de 10 minutos. Teste `revoke_token_ts` explícito se o backend o utilizar.
+- No LiveKit self-hosted, confirme que remover um participante não revoga tokens de reconexão já emitidos/renovados; confirme que o controle de admissão do backend bloqueia novas emissões e reconexões conforme necessário.
 
 ## Evidências a registrar
 
