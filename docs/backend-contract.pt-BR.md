@@ -81,7 +81,7 @@ Antes da comparação de revisão, o backend deve procurar o `operationId` no re
 6. atualizar participantes conectados para `canPublish=false` quando silenciados e restaurar a permissão pretendida quando liberados;
 7. aplicar a política persistida a tokens futuros, inclusive após reconexões.
 
-A verificação da revisão e a gravação da política devem ocorrer na mesma transação atômica ou operação equivalente de compare-and-set. Não faça uma leitura separada seguida de uma gravação incondicional.
+A verificação da revisão e a gravação da política devem ocorrer na mesma transação atômica ou operação equivalente de compare-and-set. Não faça uma leitura separada seguida de uma gravação incondicional. O plugin atual armazena o contador de revisão na configuração local do Paper; portanto, cada `serverId` deve identificar uma instalação com apenas um escritor ativo. Se várias instâncias ativas compartilharem o mesmo `serverId`, elas precisarão usar um alocador de revisões compartilhado; contadores locais independentes não são suficientes.
 
 ### Timeout e resultados desconhecidos
 
