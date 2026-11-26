@@ -20,6 +20,7 @@ public final class VoiceProximityService {
 
     /** Runs on the server thread and publishes only changed proximity payloads. */
     public void tick() {
+        playerManager.enforceCurrentPermissions();
         Collection<Player> activePlayers = playerManager.getActivePlayers();
         double hearingRange = plugin.getHearingRange();
         double hearingRangeSquared = hearingRange * hearingRange;
