@@ -39,7 +39,7 @@ Audio travels directly over WebRTC between the client and LiveKit. Minecraft plu
 - Server-side mute/unmute requests through a separate authenticated moderation endpoint.
 - Persisted mute UUIDs, restored after reconnects and server restarts.
 - Offline moderation for player identities already present in the server's offline-player cache.
-- Per-player ordered moderation requests to prevent stale mute/unmute completions from overwriting newer state.
+- A local per-player moderation queue. Backend-enforced sequencing is still required to prevent a timed-out remote mutation from overtaking a newer request; see [issue #4](https://github.com/centralmacatuba/mcraft-voice-chat/issues/4).
 - Same-world proximity calculation and changed-payload suppression.
 - Rate-limited malformed-packet warnings and bounded token-provider response parsing.
 - `/mcraftvoice status`, `mute <player>`, and `unmute <player>`.
