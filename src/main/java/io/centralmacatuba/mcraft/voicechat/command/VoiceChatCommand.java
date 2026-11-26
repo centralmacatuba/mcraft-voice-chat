@@ -3,8 +3,9 @@ package io.centralmacatuba.mcraft.voicechat.command;
 import io.centralmacatuba.mcraft.voicechat.McraftVoiceChatPlugin;
 import io.centralmacatuba.mcraft.voicechat.service.ModerationRequestQueue;
 import io.centralmacatuba.mcraft.voicechat.service.VoicePlayerManager;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -12,6 +13,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.IllegalPluginAccessException;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -36,44 +38,53 @@ public final class VoiceChatCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 1 && args[0].equalsIgnoreCase("status")) {
-            String state = !plugin.isVoiceChatEnabled() ? ChatColor.RED + "desativado"
-                    : plugin.isVoiceChatConfigured() ? ChatColor.GREEN + "configurado"
-                    : ChatColor.YELLOW + "indisponível (backend de tokens não configurado)";
-            sender.sendMessage(ChatColor.GREEN + "Voice chat: " + state + ChatColor.WHITE
-                    + " — " + plugin.getActiveVoiceSessionCount() + " jogador(es) com sessão ativa.");
-            sender.sendMessage(ChatColor.GRAY + "Backend de tokens: "
-                    + (plugin.isVoiceChatConfigured()
-                    ? ChatColor.YELLOW + "conectividade não verificada (testada ao solicitar sessão)" : ChatColor.RED + "indisponível"));
-            sender.sendMessage(ChatColor.GRAY + "Moderação no LiveKit: "
-                    + (plugin.isServerModerationAvailable()
-                    ? ChatColor.GREEN + "configurada; conectividade não verificada (testada ao moderar)" : ChatColor.RED + "não configurada"));
+            Component state = !plugin.isVoiceChatEnabled()
+                    ? Component.text("desativado", NamedTextColor.RED)
+                    : plugin.isVoiceChatConfigured()
+                    ? Component.text("configurado", NamedTextColor.GREEN)
+                    : Component.text("indisponível (backend de tokens não configurado)", NamedTextColor.YELLOW);
+
+            sender.sendMessage(Component.text("Voice chat: ", NamedTextColor.GREEN)
+                    .append(state)
+                    .append(Component.text(" — " + plugin.getActiveVoiceSessionCount()
+                            + " jogador(es) com sessão ativa.", NamedTextColor.WHITE)));
+            sender.sendMessage(Component.text("Backend de tokens: ", NamedTextColor.GRAY)
+                    .append(Component.text(plugin.isVoiceChatConfigured()
+                                    ? "conectividade não verificada (testada ao solicitar sessão)" : "indisponível",
+                            plugin.isVoiceChatConfigured() ? NamedTextColor.YELLOW : NamedTextColor.RED)));
+            sender.sendMessage(Component.text("Moderação no LiveKit: ", NamedTextColor.GRAY)
+                    .append(Component.text(plugin.isServerModerationAvailable()
+                                    ? "configurada; conectividade não verificada (testada ao moderar)" : "não configurada",
+                            plugin.isServerModerationAvailable() ? NamedTextColor.GREEN : NamedTextColor.RED)));
             return true;
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("mute") || args[0].equalsIgnoreCase("unmute"))) {
             if (!sender.hasPermission("mcraftvoice.moderate")) {
-                sender.sendMessage(ChatColor.RED + "Você não tem permissão para moderar o voice chat.");
+                sender.sendMessage(Component.text("Você não tem permissão para moderar o voice chat.", NamedTextColor.RED));
                 return true;
             }
             if (!plugin.isModerated()) {
-                sender.sendMessage(ChatColor.RED + "A moderação está desativada na configuração.");
+                sender.sendMessage(Component.text("A moderação está desativada na configuração.", NamedTextColor.RED));
                 return true;
             }
             if (!plugin.isServerModerationAvailable() || playerManager == null) {
-                sender.sendMessage(ChatColor.RED + "Backend de moderação não configurado; nenhuma alteração foi aplicada.");
+                sender.sendMessage(Component.text(
+                        "Backend de moderação não configurado; nenhuma alteração foi aplicada.", NamedTextColor.RED));
                 return true;
             }
 
             OfflinePlayer target = resolveTarget(args[1]);
             if (target == null || target.getUniqueId() == null) {
-                sender.sendMessage(ChatColor.RED
-                        + "Jogador não encontrado no cache do servidor. O jogador precisa ter entrado ao menos uma vez.");
+                sender.sendMessage(Component.text(
+                        "Jogador não encontrado no cache do servidor. O jogador precisa ter entrado ao menos uma vez.",
+                        NamedTextColor.RED));
                 return true;
             }
             UUID targetId = target.getUniqueId();
             String targetName = target.getName() == null ? args[1] : target.getName();
             boolean mute = args[0].equalsIgnoreCase("mute");
-            sender.sendMessage(ChatColor.YELLOW + "Solicitando " + (mute ? "mute" : "unmute")
-                    + " ao backend para " + targetName + "...");
+            sender.sendMessage(Component.text("Solicitando " + (mute ? "mute" : "unmute")
+                    + " ao backend para " + targetName + "...", NamedTextColor.YELLOW));
 
             moderationQueue.submit(targetId, () -> plugin.getModerationProvider().setMuted(
                             targetId, plugin.getServerId(), plugin.getRoomName(), mute))
@@ -86,13 +97,15 @@ public final class VoiceChatCommand implements CommandExecutor, TabCompleter {
                                             ? error.getCause() : error;
                                     plugin.getLogger().log(Level.WARNING,
                                             "Could not apply server-side voice moderation for " + targetId, cause);
-                                    sender.sendMessage(ChatColor.RED
-                                            + "O backend não confirmou a moderação. O estado local não foi alterado.");
+                                    sender.sendMessage(Component.text(
+                                            "O backend não confirmou a moderação. O estado local não foi alterado.",
+                                            NamedTextColor.RED));
                                     return;
                                 }
                                 playerManager.setForceMuted(targetId, mute);
-                                sender.sendMessage(ChatColor.GREEN + targetName
-                                        + (mute ? " foi silenciado no LiveKit." : " teve o mute removido no LiveKit."));
+                                sender.sendMessage(Component.text(targetName
+                                        + (mute ? " foi silenciado no LiveKit." : " teve o mute removido no LiveKit."),
+                                        NamedTextColor.GREEN));
                             });
                         } catch (IllegalPluginAccessException ignoredException) {
                             // Plugin disabled before the completion could be scheduled.
@@ -100,7 +113,8 @@ public final class VoiceChatCommand implements CommandExecutor, TabCompleter {
                     });
             return true;
         }
-        sender.sendMessage(ChatColor.YELLOW + "Uso: /" + label + " <status|mute <jogador>|unmute <jogador>>");
+        sender.sendMessage(Component.text(
+                "Uso: /" + label + " <status|mute <jogador>|unmute <jogador>>", NamedTextColor.YELLOW));
         return true;
     }
 
