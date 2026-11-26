@@ -34,7 +34,7 @@ O áudio trafega diretamente por WebRTC entre o cliente e o LiveKit. As mensagen
 - Plugin Paper para o canal existente `minecraft-web-client:voice-chat`.
 - Enquadramento do protocolo com duas strings Minecraft `pstring`: ação e payload JSON.
 - Emissão individual de tokens LiveKit temporários por backend HTTPS autenticado.
-- Validação das claims JWT: algoritmo, UUID do participante, sala, permissões e expiração.
+- Validação das claims JWT: algoritmo, UUID do participante, sala, permissões, `exp` inteiro e `nbf` inteiro obrigatório.
 - A política de mute persistida pelo backend é autoritativa; a indicação local de mute apenas adiciona uma restrição, e o backend pode bloquear publicação mesmo quando o espelho local estiver desatualizado.
 - Solicitações de mute/unmute no servidor por endpoint de moderação separado e autenticado.
 - UUIDs silenciados persistidos e restaurados após reconexões e reinicializações.
