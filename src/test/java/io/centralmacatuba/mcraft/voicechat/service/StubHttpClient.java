@@ -1,6 +1,7 @@
 package io.centralmacatuba.mcraft.voicechat.service;
 
 import java.io.IOException;
+import java.net.URI;
 import java.net.Authenticator;
 import java.net.CookieHandler;
 import java.net.ProxySelector;
@@ -56,6 +57,7 @@ final class StubHttpClient extends HttpClient {
     @Override public Optional<Authenticator> authenticator() { return Optional.empty(); }
     @Override public Version version() { return Version.HTTP_1_1; }
     @Override public Optional<Executor> executor() { return Optional.empty(); }
+    @Override public WebSocket.Builder newWebSocketBuilder() { throw new UnsupportedOperationException(); }
 
     @Override
     public <T> HttpResponse<T> send(HttpRequest request, HttpResponse.BodyHandler<T> responseBodyHandler)
