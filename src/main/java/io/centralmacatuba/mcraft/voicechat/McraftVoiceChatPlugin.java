@@ -61,6 +61,9 @@ public class McraftVoiceChatPlugin extends JavaPlugin {
             tokenProvider = new HttpVoiceTokenProvider(URI.create(endpoint), backendToken,
                     Duration.ofSeconds(timeoutSeconds), Duration.ofSeconds(maxTokenLifetimeSeconds),
                     allowInsecureLoopback);
+            if (allowInsecureLoopback) {
+                getLogger().warning("Insecure loopback LiveKit WebSocket URLs are enabled for local testing only.");
+            }
         } catch (IllegalArgumentException exception) {
             getLogger().severe("Invalid voice token-provider configuration; verify the HTTPS endpoint and timeout settings.");
             getServer().getPluginManager().disablePlugin(this);
