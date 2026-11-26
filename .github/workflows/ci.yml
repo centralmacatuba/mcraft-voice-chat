@@ -47,13 +47,11 @@ jobs:
       - name: Lint GitHub Actions workflows
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.11 -color
       - name: Run tests and build plugin
-        run: ./gradlew --write-verification-metadata sha256 --no-daemon --warning-mode all clean test build
+        run: ./gradlew --no-daemon --warning-mode all clean test build
       - name: Upload plugin JAR
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mcraft-voice-chat-${{ github.sha }}
-          path: |
-            build/libs/*.jar
-            gradle/verification-metadata.xml
+          path: build/libs/*.jar
           if-no-files-found: error
           retention-days: 14
