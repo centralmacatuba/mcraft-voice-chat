@@ -162,11 +162,11 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
         if (expiresAt <= now || expiresAt > now + maxLifetime.toSeconds()) {
             throw new IllegalStateException("LiveKit token is expired or exceeds the configured lifetime.");
         }
-        if (claims.has("nbf")) {
-            long notBefore = requiredIntegerDate(claims, "nbf");
-            if (notBefore > now + NBF_CLOCK_SKEW_SECONDS) {
-                throw new IllegalStateException("LiveKit token is not valid yet (nbf is too far in the future).");
-            }
+        // LiveKit Cloud uses nbf as the token-revocation cutoff. Require it rather than
+        // silently accepting tokens that cannot participate in that revocation mechanism.
+        long notBefore = requiredIntegerDate(claims, "nbf");
+        if (notBefore > now + NBF_CLOCK_SKEW_SECONDS) {
+            throw new IllegalStateException("LiveKit token is not valid yet (nbf is too far in the future).");
         }
     }
 
