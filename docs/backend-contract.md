@@ -81,7 +81,7 @@ The backend must first look up an existing `operationId` in its idempotency reco
 6. update connected participants so `canPublish=false` when muted and restore the intended permission when unmuted;
 7. apply persisted policy to future tokens, including after reconnects.
 
-The revision check and policy write must be one atomic database transaction or equivalent compare-and-set operation. Do not implement the check as a separate read followed by an unconditional write.
+The revision check and policy write must be one atomic database transaction or equivalent compare-and-set operation. Do not implement the check as a separate read followed by an unconditional write. The current plugin stores its revision counter in the local Paper configuration, so each `serverId` must identify one installation with a single active writer. If multiple active instances share one `serverId`, they must use a shared revision allocator; independent local counters are not sufficient.
 
 ### Timeout and unknown outcomes
 
