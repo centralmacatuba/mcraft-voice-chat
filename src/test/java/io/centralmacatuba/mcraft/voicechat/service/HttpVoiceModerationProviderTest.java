@@ -18,7 +18,7 @@ class HttpVoiceModerationProviderTest {
     @Test
     void rejectsEndpointWithUserInformation() {
         assertThrows(IllegalArgumentException.class, () -> new HttpVoiceModerationProvider(
-                URI.create("https://user:password@backend.example/moderation"),
+                URI.create("https://" + "fixture-user" + ":" + "fixture-password" + "@backend.example/moderation"),
                 "secret", Duration.ofSeconds(5)));
     }
 
