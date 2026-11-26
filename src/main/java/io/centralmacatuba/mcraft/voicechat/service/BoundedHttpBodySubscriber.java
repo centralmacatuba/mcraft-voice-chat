@@ -50,7 +50,7 @@ final class BoundedHttpBodySubscriber implements HttpResponse.BodySubscriber<byt
 
     void bindExchange(CompletableFuture<?> request) {
         exchange.set(request);
-        if (terminated.get()) request.cancel(true);
+        if (body.isCompletedExceptionally() || body.isCancelled()) request.cancel(true);
     }
 
     @Override
