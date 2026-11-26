@@ -21,19 +21,6 @@ repositories {
 }
 
 dependencies {
-    constraints {
-        // The Paper 1.21.11 API currently brings Guava 33.3.1-jre transitively.
-        // Require the first patched release for CVE-2026-102554 on all plugin/test classpaths.
-        compileOnly("com.google.guava:guava:33.7.2-jre") {
-            version { require("33.7.2-jre") }
-            because("Fixes CVE-2026-102554 in the Paper API dependency graph.")
-        }
-        testImplementation("com.google.guava:guava:33.7.2-jre") {
-            version { require("33.7.2-jre") }
-            because("Keep MockBukkit test runtime on the patched Guava release.")
-        }
-    }
-
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
     // Paper provides Gson at runtime; compileOnly avoids bundling a conflicting copy in the plugin JAR.
     compileOnly("com.google.code.gson:gson:2.13.2")
