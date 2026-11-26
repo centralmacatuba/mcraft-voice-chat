@@ -182,6 +182,27 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
         lastNearbyPayloads.remove(playerId);
     }
 
+    /**
+     * Re-checks permissions on the server thread. Permission plugins may revoke access
+     * while a player is already connected and subscribed to the voice channel.
+     */
+    public void enforceCurrentPermissions() {
+        for (Player player : new ArrayList<>(activePlayers.values())) {
+            if (!player.isOnline() || !player.hasPermission("mcraftvoice.use")) {
+                if (player.isOnline()) {
+                    send(player, "disable", new JsonObject());
+                }
+                disable(player.getUniqueId());
+            }
+        }
+        for (Map.Entry<UUID, Long> pending : new ArrayList<>(pendingRequests.entrySet())) {
+            Player player = Bukkit.getPlayer(pending.getKey());
+            if (player == null || !player.isOnline() || !player.hasPermission("mcraftvoice.use")) {
+                pendingRequests.remove(pending.getKey(), pending.getValue());
+            }
+        }
+    }
+
     public void sendNearby(Player player, JsonArray nearbyPlayers, JsonArray mutedIdentities) {
         if (!activePlayers.containsKey(player.getUniqueId())) return;
         JsonObject payload = new JsonObject();
