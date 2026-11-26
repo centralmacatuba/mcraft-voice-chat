@@ -108,6 +108,8 @@ A moderação offline resolve jogadores pelo cache de identidades offline do Pap
 
 Permissões: `mcraftvoice.use` (padrão: todos) e `mcraftvoice.moderate` (padrão: operadores).
 
+A revogação de `mcraftvoice.use` faz o plugin invalidar o estado local de sessão ativa/pendente na próxima atualização de proximidade. O protocolo atual de mensagens não possui uma ação `disable` do servidor para o cliente; portanto, essa limpeza local **não** desconecta à força um participante já conectado ao LiveKit. A revogação remota imediata exige uma operação de desconexão/controle de admissão no backend, ainda não implementada por este plugin.
+
 ## Build e releases
 
 Requisitos: Paper API 1.21.11, Java 21 e Gradle Wrapper 9.9.2 incluído.
