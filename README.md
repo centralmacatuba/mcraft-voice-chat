@@ -35,7 +35,7 @@ Audio travels directly over WebRTC between the client and LiveKit. Minecraft plu
 - Protocol framing with two Minecraft `pstring` values: action and JSON payload.
 - Per-player short-lived LiveKit token provisioning through an authenticated HTTPS backend.
 - JWT claim checks for algorithm, participant UUID, room, grants, and expiry.
-- Force-muted participants receive tokens without the LiveKit publish grant when the backend honors the contract.
+- The backend's persisted mute policy is authoritative; the local force-muted flag is deny-only, and the backend may restrict publishing even when the local mirror is stale.
 - Server-side mute/unmute requests through a separate authenticated moderation endpoint.
 - Persisted mute UUIDs, restored after reconnects and server restarts.
 - Offline moderation for player identities already present in the server's offline-player cache.
@@ -63,11 +63,11 @@ The backend is a separate service and is not included in this repository. The pl
 
 See [Backend contract (English)](docs/backend-contract.md), [Manual integration test plan](docs/testing.md), and [Contrato do backend (Português)](docs/backend-contract.pt-BR.md).
 
-The token endpoint must issue an HS256 LiveKit JWT with the exact player UUID in `sub`, the requested room in `video.room`, `roomJoin=true`, `canSubscribe=true`, and a short expiry. It must set `canPublish=false` for a force-muted player.
+The token endpoint must issue an HS256 LiveKit JWT with the exact player UUID in `sub`, the requested room in `video.room`, `roomJoin=true`, `canSubscribe=true`, and a short expiry. It must set `canPublish=false` whenever the persisted backend policy OR the local deny-only hint requires a mute. The plugin rejects a token that grants publishing when its local hint is muted, while accepting stricter backend restrictions.
 
 The moderation endpoint must persist mute state and enforce it against connected LiveKit participants. The backend's stored policy is authoritative: a false `forceMuted` request hint must never clear a stored mute. A 2xx response means the backend has accepted and durably stored the policy. A client-side `forceMuted` hint is not server-side enforcement.
 
-The plugin validates JWT claims but does not cryptographically verify the signature. Signing and signature trust remain with the backend and LiveKit. Keep token lifetime at 600 seconds or less. LiveKit Cloud revokes existing tokens when participant permissions change; on self-hosted LiveKit, permission changes affect connected participants but do not invalidate previously issued tokens for reconnects. A stale self-hosted token may remain usable until expiry, so immediate revocation requires additional admission control.
+The plugin validates JWT claims, including integer `exp` and optional `nbf` NumericDate values, but does not cryptographically verify the signature. Signing and signature trust remain with the backend and LiveKit. Keep token lifetime at 600 seconds or less. LiveKit Cloud revokes existing tokens when participant permissions change; on self-hosted LiveKit, permission changes affect connected participants but do not invalidate previously issued tokens for reconnects. A stale self-hosted token may remain usable until expiry, so immediate revocation requires additional admission control.
 
 ## Configuration
 
@@ -116,7 +116,7 @@ Requirements: Paper API 1.21.11, Java 21, and the checked-in Gradle Wrapper 9.9.
 ./gradlew --no-daemon clean test build
 ```
 
-The plugin JAR is generated in `build/libs/`. CI validates YAML/JSON metadata, runs unit tests and MockBukkit server-lifecycle integration tests, builds the JAR, and uploads it as a workflow artifact. MockBukkit verifies the plugin lifecycle and command registration against a simulated Paper server; it does not replace real Minecraft Web Client, backend, or LiveKit end-to-end tests.
+The plugin JAR is generated in `build/libs/`. CI validates YAML/JSON metadata, lints GitHub Actions workflows with actionlint, runs unit tests and MockBukkit server-lifecycle integration tests, builds the JAR, and uploads it as a workflow artifact. MockBukkit verifies the plugin lifecycle and command registration against a simulated Paper server; it does not replace real Minecraft Web Client, backend, or LiveKit end-to-end tests.
 
 Releases use [Conventional Commits](https://www.conventionalcommits.org/) and [Release Please](https://github.com/googleapis/release-please). On pushes to `principal`, Release Please opens or updates a release pull request with the version and changelog. Merging that PR creates the `vX.Y.Z` tag and GitHub Release; the tag-triggered workflow then tests/builds the plugin and attaches the JAR to that existing release. Configure the repository secret `RELEASE_PLEASE_TOKEN` as described in [CONTRIBUTING.md](CONTRIBUTING.md). The manifest currently tracks `0.1.0` as the unreleased baseline.
 
