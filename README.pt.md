@@ -35,7 +35,7 @@ O áudio trafega diretamente por WebRTC entre o cliente e o LiveKit. As mensagen
 - Enquadramento do protocolo com duas strings Minecraft `pstring`: ação e payload JSON.
 - Emissão individual de tokens LiveKit temporários por backend HTTPS autenticado.
 - Validação das claims JWT: algoritmo, UUID do participante, sala, permissões e expiração.
-- Participantes silenciados recebem tokens sem permissão de publicação LiveKit quando o backend respeita o contrato.
+- A política de mute persistida pelo backend é autoritativa; a indicação local de mute apenas adiciona uma restrição, e o backend pode bloquear publicação mesmo quando o espelho local estiver desatualizado.
 - Solicitações de mute/unmute no servidor por endpoint de moderação separado e autenticado.
 - UUIDs silenciados persistidos e restaurados após reconexões e reinicializações.
 - Moderação offline para identidades já presentes no cache de jogadores offline do servidor.
@@ -63,11 +63,11 @@ O backend é um serviço separado e não está incluído neste repositório. O p
 
 Consulte o [contrato do backend em português](docs/backend-contract.pt-BR.md), o [plano de testes de integração](docs/testing.pt-BR.md) ou o [documento em inglês](docs/backend-contract.md).
 
-O endpoint de tokens deve emitir um JWT LiveKit HS256 com o UUID exato do jogador em `sub`, a sala solicitada em `video.room`, `roomJoin=true`, `canSubscribe=true` e expiração curta. Para um jogador silenciado, deve definir `canPublish=false`.
+O endpoint de tokens deve emitir um JWT LiveKit HS256 com o UUID exato do jogador em `sub`, a sala solicitada em `video.room`, `roomJoin=true`, `canSubscribe=true` e expiração curta. Deve definir `canPublish=false` sempre que a política persistida do backend OU a indicação local exigir mute. O plugin rejeita tokens que concedam publicação quando a indicação local está silenciada, mas aceita restrições mais rigorosas do backend.
 
 O endpoint de moderação deve persistir o estado de mute e aplicá-lo aos participantes conectados no LiveKit. A política armazenada pelo backend é autoritativa: uma indicação `forceMuted=false` nunca pode remover um mute persistido. Uma resposta 2xx significa que o backend aceitou e armazenou a política de forma durável. Uma indicação `forceMuted` enviada ao cliente não representa aplicação efetiva no servidor.
 
-O plugin valida as claims do JWT, mas não verifica criptograficamente sua assinatura. A assinatura continua sob responsabilidade do backend confiável e do LiveKit. Mantenha a validade dos tokens em até 600 segundos. O LiveKit Cloud revoga tokens existentes quando as permissões do participante mudam; no LiveKit self-hosted, a alteração afeta participantes conectados, mas não invalida tokens já emitidos para reconexões. Um token antigo pode continuar utilizável até expirar, portanto a revogação imediata exige uma camada adicional de controle de admissão.
+O plugin valida as claims do JWT, incluindo os valores NumericDate inteiros de `exp` e `nbf` opcional, mas não verifica criptograficamente sua assinatura. A assinatura continua sob responsabilidade do backend confiável e do LiveKit. Mantenha a validade dos tokens em até 600 segundos. O LiveKit Cloud revoga tokens existentes quando as permissões do participante mudam; no LiveKit self-hosted, a alteração afeta participantes conectados, mas não invalida tokens já emitidos para reconexões. Um token antigo pode continuar utilizável até expirar, portanto a revogação imediata exige uma camada adicional de controle de admissão.
 
 ## Configuração
 
@@ -116,7 +116,7 @@ Requisitos: Paper API 1.21.11, Java 21 e Gradle Wrapper 9.9.2 incluído.
 ./gradlew --no-daemon clean test build
 ```
 
-O JAR é gerado em `build/libs/`. A CI valida metadados YAML/JSON, executa testes unitários e testes de integração do ciclo de vida em servidor Paper simulado pelo MockBukkit, compila o plugin e disponibiliza o JAR como artefato do workflow. O MockBukkit verifica o ciclo de vida e o registro de comandos em um servidor simulado; ele não substitui os testes ponta a ponta com Minecraft Web Client, backend e LiveKit reais.
+O JAR é gerado em `build/libs/`. A CI valida metadados YAML/JSON, verifica os workflows com actionlint, executa testes unitários e testes de integração do ciclo de vida em servidor Paper simulado pelo MockBukkit, compila o plugin e disponibiliza o JAR como artefato do workflow. O MockBukkit verifica o ciclo de vida e o registro de comandos em um servidor simulado; ele não substitui os testes ponta a ponta com Minecraft Web Client, backend e LiveKit reais.
 
 As releases usam [Conventional Commits](https://www.conventionalcommits.org/) e [Release Please](https://github.com/googleapis/release-please). Em pushes para `principal`, o Release Please cria ou atualiza um pull request com a versão e o changelog. Ao mesclar esse PR, é criada a tag `vX.Y.Z` e a GitHub Release; o workflow acionado pela tag executa testes/build e anexa o JAR à release existente. Configure o segredo de repositório `RELEASE_PLEASE_TOKEN`, conforme descrito em [CONTRIBUTING.md](CONTRIBUTING.md). O manifesto atualmente considera `0.1.0` como versão-base ainda não publicada.
 
