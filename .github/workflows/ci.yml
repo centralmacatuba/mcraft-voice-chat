@@ -13,29 +13,45 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:
   build:
-    name: Build and test (Java 21)
+    name: Build, test, and validate metadata (Java 21)
     runs-on: ubuntu-latest
     timeout-minutes: 25
-
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
+        with:
+          persist-credentials: false
+      - name: Verify Gradle Wrapper JAR checksum
+        run: echo '621008afc4f5d59357fcf06ffa644dd5aade5e091bdc363742710445f73cdaf8  gradle/wrapper/gradle-wrapper.jar' | sha256sum --check
       - name: Set up Java
         uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
-        with:
-          gradle-version: "9.9.2"
-
+      - name: Validate YAML and JSON metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          ruby -e 'require "yaml"; ARGV.each { |file| YAML.parse_file(file) }' \
+            .github/dependabot.yml .github/workflows/*.yml \
+            src/main/resources/config.yml src/main/resources/plugin.yml
+          python3 -m json.tool .release-please-config.json >/dev/null
+          python3 -m json.tool .release-please-manifest.json >/dev/null
+      - name: Lint GitHub Actions workflows
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.11 -color
       - name: Run tests and build plugin
-        run: gradle --no-daemon clean build
+        run: ./gradlew --no-daemon --warning-mode all clean test build
+      - name: Upload plugin JAR
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mcraft-voice-chat-${{ github.sha }}
+          path: build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 14

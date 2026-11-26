@@ -1,0 +1,11 @@
+{
+  "bootstrap-sha": "42548d8ebbf8a4ada856c8d55fca61cb453181d1",
+  "include-v-in-tag": true,
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "changelog-path": "CHANGELOG.md",
+      "version-file": "version.txt"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - principal
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Create or update release pull request
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Require a token that can trigger downstream workflows
+        env:
+          RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          if [ -z "$RELEASE_PLEASE_TOKEN" ]; then
+            echo "::error::Configure the RELEASE_PLEASE_TOKEN repository secret. GITHUB_TOKEN-created tags do not trigger the tag-based release workflow."
+            exit 1
+          fi
+
+      - name: Run Release Please
+        uses: googleapis/release-please-action@0b6b3fc0186a2f7118bfd88fab9ea481e1839504 # v5.0.0
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          config-file: .release-please-config.json
+          manifest-file: .release-please-manifest.json

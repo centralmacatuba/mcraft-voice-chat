@@ -1,0 +1,21 @@
+voice-chat:
+  enabled: true
+  token-provider:
+    endpoint: ""
+    bearer-token-env: "MCRAFT_VOICE_BACKEND_TOKEN"
+    request-timeout-seconds: 10
+    max-token-lifetime-seconds: 600
+    # Explicit local testing opt-in only; production should always use WSS.
+    allow-insecure-loopback: false
+  session:
+    server-id: "mcraft"
+    room: "minecraft-survival"
+    hearing-range: 32.0
+    moderated: true
+  moderation:
+    # HTTPS endpoint that persists mute policy and updates LiveKit participants.
+    # Without it, moderation commands remain unavailable.
+    endpoint: ""
+    muted-players: []
+  proximity:
+    update-interval-ticks: 10

@@ -1,196 +1,134 @@
 # Mcraft Voice Chat
 
-Plugin público para Paper, desenvolvido pela [Central Macatuba](https://github.com/centralmacatuba), que implementa o protocolo de mensagens `minecraft-web-client:voice-chat` e integra jogadores do Minecraft a uma sala LiveKit.
+Plugin público e reutilizável para Paper, desenvolvido pelo **Desenvolvedor EE (DevEE)** como parte do projeto independente [Central Macatuba](https://github.com/centralmacatuba). Implementa o protocolo `minecraft-web-client:voice-chat` e conecta jogadores do Minecraft ao LiveKit.
 
 [Read in English](README.md).
 
-O plugin foi projetado para ser reutilizado por servidores Minecraft independentes. Infraestrutura, credenciais, nomes de salas e políticas de moderação específicas de cada servidor devem ficar na configuração da instalação, não neste repositório.
+Este é um projeto independente, sem vínculo ou endosso da Prefeitura Municipal de Macatuba.
 
-> **Estado do projeto:** planejamento e implementação inicial. O enquadramento dos pacotes foi conferido com o código atual do cliente `minecraft-web-client`. A compatibilidade ponta a ponta com um cliente real e uma implantação LiveKit ainda não foi validada.
+O plugin foi projetado para servidores Minecraft independentes. A infraestrutura, as credenciais, os nomes das salas e as políticas de moderação específicas de cada servidor pertencem à instalação, não a este repositório.
 
-## Objetivos
-
-- Implementar o canal existente `minecraft-web-client:voice-chat`, sem exigir modificações no cliente.
-- Ter Paper como plataforma inicial, mantendo a lógica central isolada para uma possível integração futura com Velocity.
-- Não transportar mídia de voz pelas mensagens do Minecraft. O áudio WebRTC trafega diretamente entre os clientes e o LiveKit.
-- Coordenar sessões de voz, proximidade e moderação a partir do servidor Minecraft.
-- Suportar LiveKit Cloud e LiveKit self-hosted por meio de um backend configurável para emissão de tokens.
-- Manter credenciais e endpoints específicos dos servidores fora do controle de versão.
-- Oferecer testes, builds reproduzíveis, verificações de segurança e documentação operacional.
+> **Estado do projeto:** implementação inicial para Paper com emissão de tokens, atualização de proximidade e contrato de integração HTTP para moderação. A compatibilidade ponta a ponta com o cliente upstream e uma implantação LiveKit real ainda precisam ser testadas.
 
 ## Arquitetura
 
 ```text
 Minecraft Web Client
-  |  minecraft-web-client:voice-chat (somente controle/configuração)
+  | minecraft-web-client:voice-chat (somente controle/configuração)
   v
 Servidor Paper + Mcraft Voice Chat
-  |  requisição HTTPS autenticada para obter token temporário
+  | requisições HTTPS de token e moderação
   v
-Backend de tokens de voz
-  |
-  +---- Credenciais LiveKit / permissões de participantes
+Backend confiável de voz
+  | SDK/API administrativa do LiveKit
+  v
+Sala LiveKit
 
 Minecraft Web Client <====== áudio WebRTC ======> LiveKit
 ```
 
-O plugin Paper:
+O áudio trafega diretamente por WebRTC entre o cliente e o LiveKit. As mensagens de plugin do Minecraft transportam somente dados de controle e configuração.
 
-- anuncia suporte a voice chat para clientes compatíveis;
-- recebe as ações `enable` e `disable`;
-- solicita um token LiveKit individual e de curta duração ao backend configurado;
-- envia ao cliente os dados necessários para conectar ao LiveKit;
-- calcula a lista autoritativa de jogadores próximos que participam do voice chat;
-- envia informações de proximidade e estado de moderação;
-- limpa o estado dos jogadores ao desconectar e trata falhas assíncronas na emissão de tokens.
+## Funcionalidades implementadas
 
-O cliente continua responsável pela captura do microfone, conexão WebRTC com LiveKit, inscrições nas faixas de áudio, posicionamento 3D e atenuação espacial.
+- Plugin Paper para o canal existente `minecraft-web-client:voice-chat`.
+- Enquadramento do protocolo com duas strings Minecraft `pstring`: ação e payload JSON.
+- Emissão individual de tokens LiveKit temporários por backend HTTPS autenticado.
+- Validação das claims JWT: algoritmo, UUID do participante, sala, permissões, `exp` inteiro e `nbf` inteiro obrigatório.
+- A política de mute persistida pelo backend é autoritativa; a indicação local de mute apenas adiciona uma restrição, e o backend pode bloquear publicação mesmo quando o espelho local estiver desatualizado.
+- Solicitações de mute/unmute no servidor por endpoint de moderação separado e autenticado.
+- UUIDs silenciados persistidos e restaurados após reconexões e reinicializações.
+- Moderação offline para identidades já presentes no cache de jogadores offline do servidor.
+- Fila local que serializa solicitações de moderação por jogador, com revisões monotônicas persistidas, IDs de operação e chaves de idempotência. O backend externo precisa aplicar compare-and-set atômico e rejeitar revisões obsoletas para garantir a ordenação remota (consulte a issue #4).
+- Cálculo de proximidade no mesmo mundo e supressão de payloads inalterados.
+- Avisos de pacotes malformados com limite de frequência e leitura limitada das respostas do endpoint de tokens.
+- Comandos `/mcraftvoice status`, `mute <jogador>` e `unmute <jogador>`.
 
 ## Protocolo do cliente
 
-Canal: `minecraft-web-client:voice-chat`
+Canal: `minecraft-web-client:voice-chat`.
 
-O cliente atual registra uma estrutura de pacote com duas strings do protocolo Minecraft:
+Cada mensagem contém duas strings:
+1. `action`: `pstring` UTF-8 com prefixo de tamanho `i16` assinado;
+2. `json`: `pstring` UTF-8 com prefixo de tamanho `i16` assinado.
 
-1. `action`: `pstring` com prefixo de tamanho `i16`;
-2. `json`: `pstring` com prefixo de tamanho `i16`.
+O JSON deve ser um objeto. Não é JSON bruto e não deve usar a codificação UTF modificada de `DataOutputStream.writeUTF`.
 
-A segunda string contém um objeto JSON. Portanto, **não** é uma mensagem de plugin contendo JSON bruto e não deve ser codificada com o formato UTF modificado de `DataOutputStream.writeUTF`.
+Cliente → servidor: `enable`, `disable`.
+Servidor → cliente: `available`, `config`, `nearby`.
 
-### Cliente → servidor
+## Integração com o backend
 
-| Ação | Payload | Significado |
-| --- | --- | --- |
-| `enable` | `{}` | O jogador ativa o voice chat. |
-| `disable` | `{}` | O jogador desativa o voice chat. |
+O backend é um serviço separado e não está incluído neste repositório. O plugin nunca recebe o segredo da API LiveKit.
 
-### Servidor → cliente
+Consulte o [contrato do backend em português](docs/backend-contract.pt-BR.md), o [plano de testes de integração](docs/testing.pt-BR.md) ou o [documento em inglês](docs/backend-contract.md).
 
-| Ação | Payload | Significado |
-| --- | --- | --- |
-| `available` | `{}` | O servidor oferece suporte ao voice chat. |
-| `config` | `VoiceConfig` | Dados de conexão LiveKit individuais do jogador. |
-| `nearby` | `NearbyPayload` | Jogadores que o cliente deve conseguir ouvir e identidades forçadas ao estado de mudo. |
+O endpoint de tokens deve emitir um JWT LiveKit HS256 com o UUID exato do jogador em `sub`, a sala solicitada em `video.room`, `roomJoin=true`, `canSubscribe=true` e expiração curta. Deve definir `canPublish=false` sempre que a política persistida do backend OU a indicação local exigir mute. O plugin rejeita tokens que concedam publicação quando a indicação local está silenciada, mas aceita restrições mais rigorosas do backend.
 
-Formato esperado de `VoiceConfig`:
+O endpoint de moderação deve persistir o estado de mute e aplicá-lo aos participantes conectados no LiveKit. A política armazenada pelo backend é autoritativa: uma indicação `forceMuted=false` nunca pode remover um mute persistido. Uma resposta 2xx significa que o backend aceitou e armazenou a política de forma durável. Uma indicação `forceMuted` enviada ao cliente não representa aplicação efetiva no servidor.
 
-```json
-{
-  "url": "wss://seu-servidor-livekit",
-  "room": "minecraft-survival",
-  "token": "<token-temporario-do-participante>",
-  "identity": "<uuid-do-jogador-minecraft>",
-  "hearingRange": 32,
-  "moderated": true
-}
-```
-
-Formato esperado de `NearbyPayload`:
-
-```json
-{
-  "players": [
-    {
-      "identity": "<uuid-do-jogador-minecraft>",
-      "username": "Jogador"
-    }
-  ],
-  "forceMuted": []
-}
-```
-
-O protocolo é baseado na implementação do cliente, não em um formato inventado pelo plugin. Consulte novamente o código upstream do cliente ao atualizar a compatibilidade.
-
-## Contrato do backend de tokens
-
-O plugin nunca deve expor o segredo da API LiveKit ao navegador nem armazená-lo neste repositório. Ele chama um backend confiável por HTTPS usando uma credencial Bearer mantida no servidor.
-
-Contrato HTTP inicial:
-
-- Requisição: `POST <token-provider.endpoint>`
-- Cabeçalho: `Authorization: Bearer <segredo-do-servidor>`
-- Corpo JSON:
-
-```json
-{
-  "playerUuid": "00000000-0000-0000-0000-000000000000",
-  "username": "Jogador",
-  "serverId": "mcraft",
-  "room": "minecraft-survival"
-}
-```
-
-Resposta JSON:
-
-```json
-{
-  "url": "wss://seu-servidor-livekit",
-  "room": "minecraft-survival",
-  "token": "<token-temporario-do-participante>"
-}
-```
-
-O backend deve emitir um token cuja identidade do participante (`sub`) corresponda ao UUID Minecraft recebido, limitar o token à sala solicitada, definir permissões apropriadas de publicação/inscrição e usar expiração curta. O backend deve autenticar a credencial do servidor e validar a requisição; não deve confiar cegamente em identidades arbitrárias enviadas por clientes públicos.
+O plugin valida as claims do JWT, incluindo os valores NumericDate inteiros obrigatórios de `exp` e `nbf`, mas não verifica criptograficamente sua assinatura. A assinatura continua sob responsabilidade do backend confiável e do LiveKit. Mantenha a validade inicial dos tokens em até 600 segundos. O LiveKit renova os tokens de acesso de clientes conectados; assim, um cliente pode possuir um token renovado pelo servidor depois que o token original de entrada expirar. O LiveKit Cloud revoga tokens após alterações de permissão/remoção usando `nbf`, com tolerância padrão de um minuto para diferença de relógio e janela de revogação de 10 minutos. O LiveKit self-hosted atualiza as permissões de participantes conectados (inclusive removendo faixas quando a publicação é revogada), mas não invalida tokens já emitidos ou renovados para reconexões. Um TTL inicial curto, sozinho, não garante revogação imediata; aplique controle de admissão no backend.
 
 ## Configuração
 
-A implementação utiliza `config.yml` para configurações específicas do servidor. Segredos devem ser fornecidos por variáveis de ambiente ou outro mecanismo seguro, nunca enviados ao Git.
+Defina `MCRAFT_VOICE_BACKEND_TOKEN` no ambiente do processo Paper. Não coloque o segredo em `config.yml` nem no controle de versão.
 
-Variável de ambiente padrão para a credencial do backend: `MCRAFT_VOICE_BACKEND_TOKEN`.
-
-Consulte o arquivo `src/main/resources/config.yml` para ver as opções previstas.
-
-## Compatibilidade e requisitos
-
-- Plataforma: Paper (alvo inicial).
-- API Minecraft: 1.21.11.
-- Java: 21.
-- Cliente: versão do Minecraft Web Client que contenha a implementação de `minecraft-web-client:voice-chat`.
-- Transporte de voz: LiveKit via WebRTC; o proxy Minecraft não funciona como retransmissor de áudio.
-
-Velocity e coordenação de múltiplos servidores backend não fazem parte do escopo inicial.
-
-## Planejamento de desenvolvimento
-
-### Fase 1 — Protocolo e base Paper
-- [ ] Criar o projeto Gradle e a classe principal do plugin.
-- [ ] Implementar o enquadramento exato `pstring/i16` e validar os payloads JSON.
-- [ ] Registrar os canais de mensagens de entrada e saída.
-- [ ] Anunciar `available` aos clientes compatíveis.
-- [ ] Tratar com segurança as ações `enable` e `disable`.
-- [ ] Adicionar testes unitários para codificação e decodificação dos pacotes.
-
-### Fase 2 — Criação de sessões LiveKit
-- [ ] Implementar o cliente HTTP autenticado para o backend de tokens.
-- [ ] Validar as respostas do backend e vincular a identidade do token ao UUID Minecraft.
-- [ ] Enviar o payload `config` esperado pelo cliente.
-- [ ] Tratar timeouts, erros, solicitações duplicadas e desconexões durante requisições.
-
-### Fase 3 — Proximidade e moderação
-- [ ] Calcular jogadores próximos que participam do voice chat no mesmo mundo.
-- [ ] Enviar `nearby` somente quando o payload mudar.
-- [ ] Permitir configurar o alcance de audição e o intervalo de atualização.
-- [ ] Adicionar estado de mudo forçado controlado pelo servidor e integração com permissões; avaliar separadamente a revogação de publicação diretamente no LiveKit.
-- [ ] Limpar o estado em mudanças de mundo, desconexões e encerramento do plugin.
-
-### Fase 4 — Verificação e publicação
-- [ ] Testar com o Minecraft Web Client sem modificações.
-- [ ] Verificar áudio entre dois ou mais jogadores pelo LiveKit.
-- [ ] Testar reconexões, expiração de tokens, mudo, mudanças de mundo e encaminhamento pelo proxy.
-- [ ] Finalizar documentação operacional e automação de releases.
-- [ ] Revisar segurança das dependências e reprodutibilidade do build.
-
-## Desenvolvimento
-
-O projeto utiliza Gradle e a toolchain Java definida no build.
-
-```bash
-gradle test
-gradle build
+```yaml
+voice-chat:
+  enabled: true
+  token-provider:
+    endpoint: "https://backend.example/voice/token"
+    bearer-token-env: "MCRAFT_VOICE_BACKEND_TOKEN"
+    request-timeout-seconds: 10
+    max-token-lifetime-seconds: 600
+    allow-insecure-loopback: false
+  session:
+    server-id: "meu-servidor"
+    room: "minecraft-survival"
+    hearing-range: 32.0
+    moderated: true
+  moderation:
+    endpoint: "https://backend.example/voice/moderation"
+    muted-players: []
+  proximity:
+    update-interval-ticks: 10
 ```
 
-O JAR do plugin é gerado em `build/libs/`.
+Os dois endpoints do backend devem usar HTTPS. A URL LiveKit retornada aos clientes deve usar `wss://`. URLs `ws://` são rejeitadas por padrão; só podem ser habilitadas pela configuração explícita `voice-chat.token-provider.allow-insecure-loopback: true`, e apenas para hosts loopback durante testes locais. Mantenha essa opção como `false` em produção.
+
+Se o endpoint de moderação não estiver configurado, os comandos de moderação permanecem indisponíveis. Isso é intencional: uma indicação de mute enviada ao cliente não é uma fronteira de segurança.
+
+## Comandos e permissões
+
+- `/mcraftvoice status` — sessões ativas e estado do backend de moderação.
+- `/mcraftvoice mute <jogador>` — persiste e aplica o mute pelo backend.
+- `/mcraftvoice unmute <jogador>` — remove a política de mute no backend.
+- Apelido: `/mcvoice`.
+
+A moderação offline resolve jogadores pelo cache de identidades offline do Paper. O jogador precisa ter entrado no servidor ao menos uma vez; nomes desconhecidos não são resolvidos por consultas de rede bloqueantes.
+
+Permissões: `mcraftvoice.use` (padrão: todos) e `mcraftvoice.moderate` (padrão: operadores).
+
+A revogação de `mcraftvoice.use` faz o plugin invalidar o estado local de sessão ativa/pendente na próxima atualização de proximidade. O protocolo atual de mensagens não possui uma ação `disable` do servidor para o cliente; portanto, essa limpeza local **não** desconecta à força um participante já conectado ao LiveKit. A revogação remota imediata exige uma operação de desconexão/controle de admissão no backend, ainda não implementada por este plugin.
+
+## Build e releases
+
+Requisitos: Paper API 1.21.11, Java 21 e Gradle Wrapper 9.9.2 incluído.
+
+```bash
+./gradlew --no-daemon clean test build
+```
+
+O JAR é gerado em `build/libs/`. O Gradle verifica checksums SHA-256 das dependências e metadados usando `gradle/verification-metadata.xml`; atualize e revise esse arquivo ao alterar dependências intencionalmente. A CI valida metadados YAML/JSON, verifica os workflows com actionlint, executa testes unitários e testes de integração do ciclo de vida em servidor Paper simulado pelo MockBukkit, compila o plugin e disponibiliza o JAR como artefato do workflow. O MockBukkit verifica o ciclo de vida e o registro de comandos em um servidor simulado; ele não substitui os testes ponta a ponta com Minecraft Web Client, backend e LiveKit reais.
+
+As releases usam [Conventional Commits](https://www.conventionalcommits.org/) e [Release Please](https://github.com/googleapis/release-please). Em pushes para `principal`, o Release Please cria ou atualiza um pull request com a versão e o changelog. Ao mesclar esse PR, é criada a tag `vX.Y.Z` e a GitHub Release; o workflow acionado pela tag executa testes/build e anexa o JAR à release existente. Configure o segredo de repositório `RELEASE_PLEASE_TOKEN`, conforme descrito em [CONTRIBUTING.md](CONTRIBUTING.md). O manifesto atualmente considera `0.1.0` como versão-base ainda não publicada.
+
+O suporte a Velocity e a coordenação entre múltiplos servidores estão fora do escopo inicial.
+
+## Contribuição e segurança
+
+Consulte [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) e [SECURITY.md](SECURITY.md). Nunca publique segredos LiveKit, credenciais do backend, JWTs, dados pessoais de jogadores ou logs de produção.
 
 ## Licença
 
-Este projeto é distribuído sob a licença MIT. Consulte o arquivo [LICENSE](LICENSE).
+MIT. Consulte [LICENSE](LICENSE).

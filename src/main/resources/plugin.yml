@@ -1,0 +1,21 @@
+name: McraftVoiceChat
+version: '${version}'
+main: io.centralmacatuba.mcraft.voicechat.McraftVoiceChatPlugin
+api-version: '1.21'
+author: Desenvolvedor EE (DevEE)
+description: Implements the Minecraft Web Client voice-chat protocol with LiveKit integration.
+website: https://github.com/centralmacatuba/mcraft-voice-chat
+
+commands:
+  mcraftvoice:
+    description: Manage the Mcraft voice chat.
+    usage: /mcraftvoice <status|mute <player>|unmute <player>>
+    aliases: [mcvoice]
+
+permissions:
+  mcraftvoice.use:
+    description: Allows a player to join the voice chat.
+    default: true
+  mcraftvoice.moderate:
+    description: Allows moderation of voice chat participants.
+    default: op
