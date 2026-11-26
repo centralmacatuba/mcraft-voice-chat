@@ -131,8 +131,15 @@ public class McraftVoiceChatPlugin extends JavaPlugin {
         return voiceChatEnabled;
     }
 
-    public boolean isVoiceChatOperational() {
+    /** True when the local plugin configuration and token provider are initialized; this does not probe backend health. */
+    public boolean isVoiceChatConfigured() {
         return voiceChatEnabled && playerManager != null;
+    }
+
+    /** @deprecated Use {@link #isVoiceChatConfigured()}; backend reachability is checked when a session is requested. */
+    @Deprecated
+    public boolean isVoiceChatOperational() {
+        return isVoiceChatConfigured();
     }
 
     public int getActiveVoiceSessionCount() {
