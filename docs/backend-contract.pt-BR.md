@@ -62,18 +62,32 @@ Corpo:
   "playerUuid": "00000000-0000-0000-0000-000000000000",
   "serverId": "mcraft",
   "room": "minecraft-survival",
-  "muted": true
+  "muted": true,
+  "revision": 42,
+  "operationId": "11111111-1111-4111-8111-111111111111"
 }
 ```
 
-Retorne status 2xx somente depois que a política de mute estiver persistida e a operação LiveKit tiver sido aceita. Retorne status diferente de 2xx se não puder aplicá-la; nesse caso, o plugin não altera o estado local.
+O plugin também envia `Idempotency-Key: <operationId>`. A revisão é alocada em ordem crescente e persistida localmente antes do envio. Pular uma revisão é seguro; uma revisão nunca pode ser reutilizada para outra operação.
 
-O backend deve:
+Retorne status 2xx somente depois que a política estiver persistida e a operação LiveKit tiver sido aceita. Retorne `409 Conflict` para uma revisão obsoleta ou reutilização de ID/revisão com payload diferente. Outros status não-2xx indicam que a mutação não foi confirmada; o plugin não altera o espelho local.
+
+O backend deve implementar compare-and-set atômico por `(serverIdAutenticado, sala, playerUuid)`:
 1. validar se o servidor autenticado pode administrar o ID de servidor e a sala informados;
-2. persistir a política por servidor, sala e UUID do participante;
-3. atualizar participantes conectados para `canPublish=false` quando silenciados e restaurar a permissão pretendida quando liberados;
-4. aplicar a política persistida a tokens futuros, inclusive após reconexões;
-5. tornar requisições repetidas idempotentes.
+2. persistir a política junto da maior revisão aceita e do ID da operação;
+3. aceitar somente revisão estritamente maior que a armazenada e gravar revisão, ID da operação e estado de mute desejado atomicamente;
+4. rejeitar revisões menores sem alterar política ou permissões LiveKit, mesmo se a requisição chegar depois de uma revisão mais nova;
+5. se o mesmo ID/revisão forem recebidos novamente com payload idêntico, retornar o resultado original sem executar outra mutação lógica; rejeitar reutilização com payload diferente;
+6. atualizar participantes conectados para `canPublish=false` quando silenciados e restaurar a permissão pretendida quando liberados;
+7. aplicar a política persistida a tokens futuros, inclusive após reconexões.
+
+A verificação da revisão e a gravação da política devem ocorrer na mesma transação atômica ou operação equivalente de compare-and-set. Não faça uma leitura separada seguida de uma gravação incondicional.
+
+### Timeout e resultados desconhecidos
+
+Um timeout não prova que o backend rejeitou ou desfez a mutação. O próximo comando recebe uma revisão maior, persistida antes do envio, e um novo ID de operação. Se a requisição antiga ainda estiver em execução ou chegar atrasada, o backend deve rejeitá-la depois que uma revisão maior tiver sido aceita. Se a antiga tiver sido confirmada primeiro, a revisão maior seguinte a substitui. Uma nova tentativa da mesma operação lógica deve reutilizar exatamente o mesmo ID, revisão e payload.
+
+A fila do plugin apenas serializa o envio local. O compare-and-set do backend impede gravações remotas obsoletas após timeouts, novas tentativas, reconexões e múltiplas instâncias do plugin.
 
 Uma indicação `forceMuted` enviada ao cliente não é aplicação efetiva. A permissão do participante no LiveKit é a fronteira de aplicação. Se o participante estiver offline, persista a política e garanta que o próximo token seja emitido sem permissão de publicação.
 
