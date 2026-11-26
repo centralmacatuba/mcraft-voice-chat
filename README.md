@@ -81,6 +81,7 @@ voice-chat:
     bearer-token-env: "MCRAFT_VOICE_BACKEND_TOKEN"
     request-timeout-seconds: 10
     max-token-lifetime-seconds: 600
+    allow-insecure-loopback: false
   session:
     server-id: "my-server"
     room: "minecraft-survival"
