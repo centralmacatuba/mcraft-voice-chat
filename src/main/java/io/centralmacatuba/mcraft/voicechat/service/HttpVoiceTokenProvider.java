@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -20,6 +21,7 @@ import java.util.concurrent.CompletionException;
 /** Calls a trusted server-side service that signs short-lived LiveKit participant tokens. */
 public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
     private static final int MAX_RESPONSE_BYTES = 64 * 1024;
+    private static final long NBF_CLOCK_SKEW_SECONDS = 60L;
     private final URI endpoint;
     private final String bearerToken;
     private final HttpClient client;
@@ -149,19 +151,34 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
         requireTrue(video, "roomJoin", "LiveKit token does not grant room participation.");
         requireTrue(video, "canSubscribe", "LiveKit token does not grant audio subscriptions.");
         boolean canPublish = requiredBoolean(video, "canPublish");
-        if (canPublish == forceMuted) {
-            throw new IllegalStateException(forceMuted
-                    ? "A force-muted participant token must not grant audio publishing."
-                    : "An unmuted participant token must grant audio publishing.");
+        // The backend's persisted moderation policy is authoritative and may be stricter
+        // than the local deny-only hint. A local mute must never be overridden by the token.
+        if (forceMuted && canPublish) {
+            throw new IllegalStateException("A force-muted participant token must not grant audio publishing.");
         }
-        if (!claims.has("exp") || !claims.get("exp").isJsonPrimitive()
-                || !claims.get("exp").getAsJsonPrimitive().isNumber()) {
-            throw new IllegalStateException("LiveKit token is missing an expiration claim.");
-        }
-        long expiresAt = claims.get("exp").getAsLong();
+
         long now = Instant.now().getEpochSecond();
+        long expiresAt = requiredIntegerDate(claims, "exp");
         if (expiresAt <= now || expiresAt > now + maxLifetime.toSeconds()) {
             throw new IllegalStateException("LiveKit token is expired or exceeds the configured lifetime.");
+        }
+        if (claims.has("nbf")) {
+            long notBefore = requiredIntegerDate(claims, "nbf");
+            if (notBefore > now + NBF_CLOCK_SKEW_SECONDS) {
+                throw new IllegalStateException("LiveKit token is not valid yet (nbf is too far in the future).");
+            }
+        }
+    }
+
+    private static long requiredIntegerDate(JsonObject claims, String key) {
+        if (!claims.has(key) || !claims.get(key).isJsonPrimitive()
+                || !claims.get(key).getAsJsonPrimitive().isNumber()) {
+            throw new IllegalStateException("Missing NumericDate claim: " + key);
+        }
+        try {
+            return new BigDecimal(claims.get(key).getAsString()).longValueExact();
+        } catch (NumberFormatException | ArithmeticException exception) {
+            throw new IllegalStateException("JWT NumericDate claim must be an integer: " + key);
         }
     }
 
