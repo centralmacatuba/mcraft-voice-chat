@@ -121,7 +121,7 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
         if (allowInsecureLoopback && "ws".equals(scheme) && host != null
                 && (host.equalsIgnoreCase("localhost") || host.equals("127.0.0.1")
                 || host.equals("::1") || host.equals("[::1]"))) return;
-        throw new IllegalStateException("LiveKit URL must use wss://; ws:// is allowed only for loopback testing.");
+        throw new IllegalStateException("LiveKit URL must use wss://; ws:// requires explicit opt-in and a loopback host.");
     }
 
     static void validateTokenClaims(String token, UUID expectedIdentity, String expectedRoom, Duration maxLifetime) {
