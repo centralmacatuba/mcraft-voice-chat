@@ -11,6 +11,7 @@ This document defines the server-to-server contract consumed by the Paper plugin
 - Apply rate limits and audit administrative moderation changes.
 - Never log Authorization headers, JWTs, or full response bodies.
 - Do not redirect requests to another host.
+- Require LiveKit URLs to use WSS. Insecure WS is disabled by default and may only be opted into for loopback local testing with `voice-chat.token-provider.allow-insecure-loopback: true`.
 
 ## Token endpoint
 
