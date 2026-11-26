@@ -93,7 +93,7 @@ voice-chat:
     update-interval-ticks: 10
 ```
 
-Both backend endpoints must use HTTPS. The LiveKit URL returned to clients must use `wss://`; `ws://` is accepted only for loopback development.
+Both backend endpoints must use HTTPS. The LiveKit URL returned to clients must use `wss://`. Insecure `ws://` is rejected by default; it can be enabled only through the explicit `voice-chat.token-provider.allow-insecure-loopback: true` setting, and only for loopback hosts during local testing. Keep this setting `false` in production.
 
 If the moderation endpoint is not configured, moderation commands remain unavailable. This is intentional: a client-side `forceMuted` hint is not an enforcement boundary.
 
