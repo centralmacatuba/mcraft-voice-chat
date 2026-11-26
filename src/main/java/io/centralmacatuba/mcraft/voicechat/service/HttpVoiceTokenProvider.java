@@ -27,9 +27,15 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
     private final HttpClient client;
     private final Duration requestTimeout;
     private final Duration maxTokenLifetime;
+    private final boolean allowInsecureLoopback;
 
     public HttpVoiceTokenProvider(URI endpoint, String bearerToken, Duration requestTimeout,
                                   Duration maxTokenLifetime) {
+        this(endpoint, bearerToken, requestTimeout, maxTokenLifetime, false);
+    }
+
+    public HttpVoiceTokenProvider(URI endpoint, String bearerToken, Duration requestTimeout,
+                                  Duration maxTokenLifetime, boolean allowInsecureLoopback) {
         if (endpoint == null || !"https".equalsIgnoreCase(endpoint.getScheme())
                 || endpoint.getHost() == null || endpoint.getUserInfo() != null || endpoint.getFragment() != null) {
             throw new IllegalArgumentException("The token-provider endpoint must be a valid HTTPS URL.");
@@ -45,6 +51,7 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
         this.bearerToken = bearerToken;
         this.requestTimeout = requestTimeout;
         this.maxTokenLifetime = maxTokenLifetime;
+        this.allowInsecureLoopback = allowInsecureLoopback;
         this.client = HttpClient.newBuilder().connectTimeout(requestTimeout)
                 .followRedirects(HttpClient.Redirect.NEVER).build();
     }
@@ -85,7 +92,7 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
                         if (!room.equals(responseRoom)) {
                             throw new IllegalStateException("Token backend returned an unexpected room.");
                         }
-                        validateLiveKitUrl(url);
+                        validateLiveKitUrl(url, allowInsecureLoopback);
                         validateTokenClaims(token, playerUuid, room, maxTokenLifetime, forceMuted);
                         return new VoiceCredentials(url, responseRoom, token);
                     } catch (IOException exception) {
@@ -99,7 +106,11 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
                 });
     }
 
-    private static void validateLiveKitUrl(String value) {
+    static void validateLiveKitUrl(String value) {
+        validateLiveKitUrl(value, false);
+    }
+
+    static void validateLiveKitUrl(String value, boolean allowInsecureLoopback) {
         URI uri = URI.create(value);
         String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
         String host = uri.getHost();
@@ -107,7 +118,7 @@ public final class HttpVoiceTokenProvider implements VoiceTokenProvider {
             throw new IllegalStateException("LiveKit URL must not contain user information or a fragment.");
         }
         if ("wss".equals(scheme) && host != null) return;
-        if ("ws".equals(scheme) && host != null
+        if (allowInsecureLoopback && "ws".equals(scheme) && host != null
                 && (host.equalsIgnoreCase("localhost") || host.equals("127.0.0.1")
                 || host.equals("::1") || host.equals("[::1]"))) return;
         throw new IllegalStateException("LiveKit URL must use wss://; ws:// is allowed only for loopback testing.");
