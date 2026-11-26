@@ -98,6 +98,12 @@ class HttpVoiceTokenProviderTest {
     }
 
     @Test
+    void rejectsFractionalNotBeforeNumericDate() {
+        assertThrows(IllegalStateException.class, () -> HttpVoiceTokenProvider.validateTokenClaims(
+                tokenWithFractionalNotBefore(), PLAYER_ID, ROOM, Duration.ofMinutes(15)));
+    }
+
+    @Test
     void rejectsFractionalExpirationNumericDate() {
         assertThrows(IllegalStateException.class, () -> HttpVoiceTokenProvider.validateTokenClaims(
                 tokenWithFractionalExpiration(), PLAYER_ID, ROOM, Duration.ofMinutes(15)));
@@ -199,6 +205,22 @@ class HttpVoiceTokenProviderTest {
         JsonObject claims = new JsonObject();
         claims.addProperty("sub", PLAYER_ID.toString());
         claims.addProperty("exp", Instant.now().plusSeconds(300).getEpochSecond());
+        claims.add("video", video);
+        return encodeJwt(header, claims);
+    }
+
+    private static String tokenWithFractionalNotBefore() {
+        JsonObject header = new JsonObject();
+        header.addProperty("alg", "HS256");
+        JsonObject video = new JsonObject();
+        video.addProperty("room", ROOM);
+        video.addProperty("roomJoin", true);
+        video.addProperty("canPublish", true);
+        video.addProperty("canSubscribe", true);
+        JsonObject claims = new JsonObject();
+        claims.addProperty("sub", PLAYER_ID.toString());
+        claims.addProperty("exp", Instant.now().plusSeconds(300).getEpochSecond());
+        claims.addProperty("nbf", Instant.now().minusSeconds(1).getEpochSecond() + 0.5);
         claims.add("video", video);
         return encodeJwt(header, claims);
     }
