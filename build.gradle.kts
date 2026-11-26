@@ -47,6 +47,7 @@ tasks.test {
 
 tasks.processResources {
     filteringCharset = "UTF-8"
+    inputs.property("pluginVersion", pluginVersionForResources)
     filesMatching("plugin.yml") {
         expand("version" to pluginVersionForResources)
     }
@@ -55,4 +56,7 @@ tasks.processResources {
 tasks.jar {
     archiveBaseName.set("McraftVoiceChat")
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from(rootProject.file("LICENSE")) {
+        into("META-INF")
+    }
 }
