@@ -224,6 +224,22 @@ public final class VoicePlayerManager implements PluginMessageListener, Listener
         return forceMuted.contains(playerId);
     }
 
+    /**
+     * Allocates and durably stores the next mutation revision before the HTTP request is sent.
+     * A skipped revision after a crash is safe; reusing a revision is not.
+     */
+    public long allocateModerationRevision(UUID playerId) {
+        String path = "voice-chat.moderation.revisions." + playerId;
+        long current = plugin.getConfig().getLong(path, 0L);
+        if (current == Long.MAX_VALUE) {
+            throw new IllegalStateException("Moderation revision counter is exhausted for this player.");
+        }
+        long next = current + 1L;
+        plugin.getConfig().set(path, next);
+        plugin.saveConfig();
+        return next;
+    }
+
     /** Persist the local mirror only after the trusted backend confirms enforcement. */
     public void setForceMuted(UUID playerId, boolean muted) {
         boolean changed = muted ? forceMuted.add(playerId) : forceMuted.remove(playerId);
