@@ -1,6 +1,6 @@
 # Mcraft Voice Chat
 
-Plugin público e reutilizável para Paper, desenvolvido pela [Central Macatuba](https://github.com/centralmacatuba), que implementa o protocolo `minecraft-web-client:voice-chat` e conecta jogadores do Minecraft ao LiveKit.
+Plugin público e reutilizável para Paper, desenvolvido pelo **Desenvolvedor EE (DevEE)** como parte do projeto independente [Central Macatuba](https://github.com/centralmacatuba). Implementa o protocolo `minecraft-web-client:voice-chat` e conecta jogadores do Minecraft ao LiveKit.
 
 [Read in English](README.md).
 
