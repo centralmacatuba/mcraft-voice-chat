@@ -72,7 +72,7 @@ O plugin também envia `Idempotency-Key: <operationId>`. A revisão é alocada e
 
 Retorne status 2xx somente depois que a política estiver persistida e a operação LiveKit tiver sido aceita. Retorne `409 Conflict` para uma revisão obsoleta ou reutilização de ID/revisão com payload diferente. Outros status não-2xx indicam que a mutação não foi confirmada; o plugin não altera o espelho local.
 
-O backend deve implementar compare-and-set atômico por `(serverIdAutenticado, sala, playerUuid)`:
+Antes da comparação de revisão, o backend deve procurar o `operationId` no registro de idempotência e retornar o resultado armazenado quando o payload for idêntico. Somente uma operação ainda não registrada segue para a comparação de revisão. O backend deve implementar compare-and-set atômico por `(serverIdAutenticado, sala, playerUuid)`:
 1. validar se o servidor autenticado pode administrar o ID de servidor e a sala informados;
 2. persistir a política junto da maior revisão aceita e do ID da operação;
 3. aceitar somente revisão estritamente maior que a armazenada e gravar revisão, ID da operação e estado de mute desejado atomicamente;
