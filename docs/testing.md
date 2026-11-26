@@ -27,6 +27,8 @@ This checklist describes tests that require a real Paper server, a compatible Mi
 - Disable voice chat and verify that the server removes the active session.
 - Disconnect while token issuance is pending; verify that no late response creates an active session.
 - Reconnect and verify that the player can request a fresh session.
+- Remove `mcraftvoice.use` from a connected player while a voice session is active; verify the server sends `disable` and removes the session on the next proximity update.
+- Remove `mcraftvoice.use` while token issuance is pending; verify that the pending request is invalidated and a late response cannot create a session.
 
 ## Proximity
 
