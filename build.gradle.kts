@@ -12,6 +12,9 @@ version = providers.gradleProperty("pluginVersion")
     .orElse(snapshotVersion)
     .get()
 
+// Capture the resolved version during configuration; do not access Project from the task action.
+val pluginVersionForResources = project.version.toString()
+
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
@@ -45,7 +48,7 @@ tasks.test {
 tasks.processResources {
     filteringCharset = "UTF-8"
     filesMatching("plugin.yml") {
-        expand("version" to project.version)
+        expand("version" to pluginVersionForResources)
     }
 }
 
